@@ -78,6 +78,7 @@ class UserInfoView(RetrieveAPIView):
         return self.retrieve(request, *args, **kwargs)
 
 class VerifyOTPView(APIView):
+    permission_classes = [AllowAny]
     def post(self, request):
         email = request.data.get('email')
         otp = request.data.get('otp')
@@ -93,5 +94,39 @@ class VerifyOTPView(APIView):
             user.otp_expiry = None
             user.save()
             return Response({"detail": "Account verified successfully."}, status=status.HTTP_200_OK)
+        elif user.otp == otp and user.otp_expiry < now():
+            return Response({"detail": "Expired OTP."}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response({"detail": "Invalid or expired OTP."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+class ResendOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        tags=["auth"],
+        operation_description="Resend a new OTP if the last one is expired.",
+        request_body=None
+    )
+    def post(self, request):
+        email = request.data.get('email')
+
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if the OTP has expired
+        if user.otp and user.otp_expiry > now():
+            return Response(
+                {"detail": "The previous OTP is still valid."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Generate and send a new OTP
+        user.generate_otp()
+        send_otp_email(user)
+
+        return Response(
+            {"detail": "A new OTP has been sent to your email."},
+            status=status.HTTP_200_OK
+        )
