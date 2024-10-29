@@ -39,6 +39,7 @@ class RegisterView(APIView):
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
+
     @swagger_auto_schema(
         tags=["auth"],
         operation_description="Login a user",
@@ -51,10 +52,22 @@ class LoginView(APIView):
                 email=serializer.validated_data['email'],
                 password=serializer.validated_data['password']
             )
+
             if user is not None:
+                if not user.is_verified:  # Check if the user is verified
+                    return Response(
+                        {"detail": "Account is not verified. Please verify your email."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                
                 token, _ = Token.objects.get_or_create(user=user)
                 return Response({"token": token.key}, status=status.HTTP_200_OK)
-            return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+            return Response(
+                {"detail": "Invalid credentials."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserInfoView(RetrieveAPIView):
