@@ -7,19 +7,20 @@ from rest_framework import status
 from django.utils.timezone import now
 
 from accounts.models import CustomUser
+from accounts.utils import send_otp_email
 from .serializers import RegisterSerializer, LoginSerializer, UserInfoSerializer
 from rest_framework.generics import RetrieveAPIView
 from drf_yasg.utils import swagger_auto_schema
 
 class RegisterView(APIView):
-    permission_classes = [AllowAny]  # Allow anyone to register
-
+    permission_classes = [AllowAny]
     @swagger_auto_schema(
         tags=["auth"],
         operation_description="Register a new user and send OTP",
         request_body=RegisterSerializer,
     )
     def post(self, request):
+
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
@@ -28,18 +29,16 @@ class RegisterView(APIView):
             user.generate_otp()
 
             # Send OTP to the user's email
-            self.send_otp_email(user)
+            send_otp_email(user)
 
-            token, _ = Token.objects.get_or_create(user=user)
             return Response(
-                {"detail": "OTP sent to your email.", "token": token.key},
+                {"detail": "OTP sent to your email."},
                 status=status.HTTP_201_CREATED
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginView(APIView):
-    permission_classes = [AllowAny]  # Allow anyone to login
-
+    permission_classes = [AllowAny]
     @swagger_auto_schema(
         tags=["auth"],
         operation_description="Login a user",

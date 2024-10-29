@@ -149,4 +149,4 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'online.auction.mail@gmail.com'
-EMAIL_HOST_PASSWORD = 'mmm2011A'
+EMAIL_HOST_PASSWORD = 'vuxp yqlv ctfo egnr'
