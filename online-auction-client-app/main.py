@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 import requests
 from auth import register_user, login_user, resend_otp, verify_otp
+import threading
 
 class AuthApp:
     def __init__(self, root):
@@ -11,6 +12,10 @@ class AuthApp:
         self.user_email = None  # Store email for OTP verification
         self.timer_seconds = 180  # 3 minutes in seconds
 
+        # Define buttons as instance variables
+        self.login_button = None
+        self.register_button = None
+
         # Show login screen by default
         self.show_login()
 
@@ -19,15 +24,13 @@ class AuthApp:
         if self.current_frame is not None:
             self.current_frame.destroy()
 
-    def show_loading(self, text="Please wait..."):
-        """Display a loading indicator in place of a button."""
-        self.loading_label = tk.Label(self.current_frame, text=text, font=("Arial", 16))
-        self.loading_label.pack(pady=20)
-        self.loading_label.update()  # Refresh to show loading text immediately
+    def set_button_loading(self, button):
+        """Set the button to loading state."""
+        button.config(text="Loading...", state='disabled')
 
-    def hide_loading(self):
-        """Remove the loading indicator."""
-        self.loading_label.destroy()
+    def reset_button(self, button, text):
+        """Reset the button to its original state."""
+        button.config(text=text, state='normal')
 
     def show_login(self):
         """Display the login screen."""
@@ -46,23 +49,32 @@ class AuthApp:
         password_entry.pack()
 
         def handle_login():
-            self.show_loading()  # Show loading indicator
+            self.set_button_loading(self.login_button)  # Set loading state on button
+
             email = email_entry.get()
             password = password_entry.get()
 
-            response, status = login_user(email, password)
-            self.hide_loading()  # Hide loading indicator
+            # Start a thread for the login process
+            threading.Thread(target=self.login_thread, args=(email, password)).start()
 
-            if status == 200:
-                messagebox.showinfo("Success", "Login successful!")
-            elif status == 403:
-                messagebox.showwarning("Warning", response.get("detail", "Account not verified."))
-            else:
-                messagebox.showerror("Error", response.get("detail", "Invalid credentials."))
+        self.login_button = tk.Button(self.current_frame, text="Login", command=handle_login)
+        self.login_button.pack(pady=10)
 
-        tk.Button(self.current_frame, text="Login", command=handle_login).pack(pady=10)
         tk.Button(self.current_frame, text="Don't have an account? Register",
                   command=self.show_register).pack(pady=10)
+
+    def login_thread(self, email, password):
+        """Thread for logging in."""
+        response, status = login_user(email, password)
+
+        self.root.after(0, lambda: self.reset_button(self.login_button, "Login"))  # Reset button on the main thread
+
+        if status == 200:
+            self.root.after(0, lambda: messagebox.showinfo("Success", "Login successful!"))
+        elif status == 403:
+            self.root.after(0, lambda: messagebox.showwarning("Warning", response.get("detail", "Account not verified.")))
+        else:
+            self.root.after(0, lambda: messagebox.showerror("Error", response.get("detail", "Invalid credentials.")))
 
     def show_register(self):
         """Display the register screen."""
@@ -89,25 +101,34 @@ class AuthApp:
         password_entry.pack()
 
         def handle_register():
-            self.show_loading("Registering...")  # Show loading indicator
+            self.set_button_loading(self.register_button)  # Set loading state on button
+
             email = email_entry.get()
             first_name = first_name_entry.get()
             last_name = last_name_entry.get()
             password = password_entry.get()
 
-            response, status = register_user(email, first_name, last_name, password)
-            self.hide_loading()  # Hide loading indicator
+            # Start a thread for the registration process
+            threading.Thread(target=self.register_thread, args=(email, first_name, last_name, password)).start()
 
-            if status == 201:
-                messagebox.showinfo("Success", "Registration successful! Please check your email for OTP.")
-                self.user_email = email  # Store email for OTP verification
-                self.show_otp_screen()  # Go to OTP screen
-            else:
-                messagebox.showerror("Error", str(response))
+        self.register_button = tk.Button(self.current_frame, text="Register", command=handle_register)
+        self.register_button.pack(pady=10)
 
-        tk.Button(self.current_frame, text="Register", command=handle_register).pack(pady=10)
         tk.Button(self.current_frame, text="Already have an account? Login",
                   command=self.show_login).pack(pady=10)
+
+    def register_thread(self, email, first_name, last_name, password):
+        """Thread for registering."""
+        response, status = register_user(email, first_name, last_name, password)
+
+        self.root.after(0, lambda: self.reset_button(self.register_button, "Register"))  # Reset button on the main thread
+
+        if status == 201:
+            self.root.after(0, lambda: messagebox.showinfo("Success", "Registration successful! Please check your email for OTP."))
+            self.user_email = email  # Store email for OTP verification
+            self.root.after(0, self.show_otp_screen)  # Go to OTP screen
+        else:
+            self.root.after(0, lambda: messagebox.showerror("Error", str(response)))
 
     def show_otp_screen(self):
         """Display the OTP verification screen."""
@@ -128,18 +149,19 @@ class AuthApp:
         self.resend_button.pack(pady=10)
 
         def handle_otp_verification():
-            self.show_loading("Verifying OTP...")  # Show loading indicator
+            self.set_button_loading(verify_button)  # Set loading state on button
             otp = otp_entry.get()
             response, status = verify_otp(self.user_email, otp)
-            self.hide_loading()  # Hide loading indicator
+            self.root.after(0, lambda: self.reset_button(verify_button, "Verify"))  # Reset button on the main thread
 
             if status == 200:
-                messagebox.showinfo("Success", "Account verified successfully! Please log in.")
+                self.root.after(0, lambda: messagebox.showinfo("Success", "Account verified successfully! Please log in."))
                 self.show_login()  # Redirect to login
             else:
-                messagebox.showerror("Error", response.get("detail", "Invalid or expired OTP."))
+                self.root.after(0, lambda: messagebox.showerror("Error", response.get("detail", "Invalid or expired OTP.")))
 
-        tk.Button(self.current_frame, text="Verify", command=handle_otp_verification).pack(pady=10)
+        verify_button = tk.Button(self.current_frame, text="Verify", command=handle_otp_verification)
+        verify_button.pack(pady=10)
 
         # Start the 3-minute countdown timer
         self.start_timer(timer_label)
@@ -162,7 +184,7 @@ class AuthApp:
 
     def resend_otp(self):
         """Handle resending the OTP using the new endpoint."""
-        self.show_loading("Sending OTP...")  # Show loading indicator
+        self.set_button_loading(self.resend_button)  # Set loading state on button
         response, status = resend_otp(self.user_email)
 
         if status == 200:
@@ -176,7 +198,7 @@ class AuthApp:
         else:
             messagebox.showerror("Error", "Failed to resend OTP.")
 
-        self.hide_loading()  # Hide loading indicator after request is done
+        self.root.after(0, lambda: self.reset_button(self.resend_button, "Resend OTP"))  # Reset button after request
 
 if __name__ == "__main__":
     root = tk.Tk()
