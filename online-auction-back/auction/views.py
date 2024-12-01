@@ -10,7 +10,7 @@ class AuctionViewSet(viewsets.ModelViewSet):
     """
     A viewset for viewing and editing auction instances.
     """
-    queryset = Auction.objects.all()
+    queryset = Auction.objects.all().order_by('start_date_time')  
     serializer_class = AuctionSerializer
     permission_classes = [permissions.AllowAny]  # Only admins can create, update, or delete
 

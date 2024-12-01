@@ -2,9 +2,10 @@ import tkinter as tk
 from tkinter import messagebox
 import requests
 import threading
-
+import json
 from auction import get_auctions
 from auth import login_user, register_user, resend_otp, verify_otp
+from utils import load_token  # Assuming load_token function is defined in utils to load the token
 
 
 class AuctionApp:
@@ -19,8 +20,11 @@ class AuctionApp:
         self.login_button = None
         self.register_button = None
 
-        # Show login screen by default
-        self.show_login()
+        # Check if token is stored and valid, then either show auctions or login screen
+        if self.is_token_valid():
+            self.show_navbar()  # Go directly to the auction screen
+        else:
+            self.show_login()  # Show login screen
 
     def clear_frame(self):
         """Clear the current frame."""
@@ -182,6 +186,15 @@ class AuctionApp:
 
         # Placeholder for user's auctions
         tk.Label(self.current_frame, text="No auctions available.").pack()
+
+    def is_token_valid(self):
+        """Check if the token is valid by trying to fetch auctions."""
+        token = load_token()  # Load the token from local storage
+        if token:
+            response, status = get_auctions()
+            if status == 200:
+                return True
+        return False
 
 
 if __name__ == "__main__":

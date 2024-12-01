@@ -17,9 +17,15 @@ def login_user(email, password):
     url = f"{utils.BASE_URL}login/"
     data = {"email": email, "password": password}
     response = requests.post(url, json=data)
+    
     if response.status_code == 200:
-        utils.TOKEN = response.json().get("token")
-        # Save the token
+        # Get the token from the response
+        token = response.json().get("token")
+        if token:
+            # Save the token locally using the save_token function
+            utils.save_token(token)
+            # Set the global TOKEN variable
+            utils.TOKEN = token
     return response.json(), response.status_code
 
 def verify_otp(email, otp):

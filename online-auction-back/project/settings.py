@@ -34,6 +34,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Make sure STATIC_URL is also defined
 STATIC_URL = '/static/'
 
+MEDIA_URL = '/media/'  # URL to serve the media files
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
+
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
 # Application definition

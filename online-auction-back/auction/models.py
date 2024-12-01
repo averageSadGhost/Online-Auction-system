@@ -21,6 +21,7 @@ class Auction(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='scheduled')  # Auction status
 
     def __str__(self):
+
         return self.title  # Return the auction title
 
 class Vote(models.Model):

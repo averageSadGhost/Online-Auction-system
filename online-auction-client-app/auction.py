@@ -1,10 +1,12 @@
+from tkinter import messagebox
 import requests
 import utils
 
 def get_headers():
     """Get headers with the authorization token."""
-    if utils.TOKEN:
-        return {"Authorization": f"Token {utils.TOKEN}"}
+    token = utils.load_token()  # Load the token
+    if token:
+        return {"Authorization": f"Token {token}"}
     return {}
 
 def get_auctions():
@@ -12,6 +14,12 @@ def get_auctions():
     url = f"{utils.BASE_URL}auctions/"
     headers = get_headers()
     response = requests.get(url, headers=headers)
+    
+    if response.status_code != 200:
+        # If the status code is not 200, show the login screen
+        messagebox.showerror("Session Expired", "Your session has expired. Please log in again.")
+        # You can add code here to redirect to the login screen in your Tkinter app
+        return None, response.status_code  # Or any other logic for handling this
     return response.json(), response.status_code
 
 def get_auction_details(auction_id):
