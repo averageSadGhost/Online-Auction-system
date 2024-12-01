@@ -1,13 +1,16 @@
 import tkinter as tk
 from tkinter import messagebox
 import requests
-from auth import register_user, login_user, resend_otp, verify_otp
 import threading
 
-class AuthApp:
+from auction import get_auctions
+from auth import login_user, register_user, resend_otp, verify_otp
+
+
+class AuctionApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Auth App")
+        self.root.title("Auction App")
         self.current_frame = None
         self.user_email = None  # Store email for OTP verification
         self.timer_seconds = 180  # 3 minutes in seconds
@@ -71,6 +74,7 @@ class AuthApp:
 
         if status == 200:
             self.root.after(0, lambda: messagebox.showinfo("Success", "Login successful!"))
+            self.root.after(0, self.show_navbar)  # Show navigation bar after login
         elif status == 403:
             self.root.after(0, lambda: messagebox.showwarning("Warning", response.get("detail", "Account not verified.")))
         else:
@@ -130,77 +134,57 @@ class AuthApp:
         else:
             self.root.after(0, lambda: messagebox.showerror("Error", str(response)))
 
-    def show_otp_screen(self):
-        """Display the OTP verification screen."""
+    def show_navbar(self):
+        """Display the navigation bar after login."""
+        self.clear_frame()
+        navbar = tk.Frame(self.root, bg="lightgray")
+        navbar.pack(side="top", fill="x")
+
+        tk.Button(navbar, text="Available Auctions", command=self.show_available_auctions).pack(side="left", padx=10, pady=5)
+        tk.Button(navbar, text="My Auctions", command=self.show_my_auctions).pack(side="left", padx=10, pady=5)
+
+        self.current_frame = tk.Frame(self.root)
+        self.current_frame.pack(pady=20)
+
+        # Show available auctions by default
+        self.show_available_auctions()
+
+    def show_available_auctions(self):
+        """Display available auctions."""
         self.clear_frame()
         self.current_frame = tk.Frame(self.root)
         self.current_frame.pack(pady=20)
 
-        tk.Label(self.current_frame, text="Verify OTP", font=("Arial", 20)).pack(pady=10)
+        tk.Label(self.current_frame, text="Available Auctions", font=("Arial", 20)).pack(pady=10)
 
-        tk.Label(self.current_frame, text="Enter OTP").pack()
-        otp_entry = tk.Entry(self.current_frame)
-        otp_entry.pack()
-
-        timer_label = tk.Label(self.current_frame, text="")
-        timer_label.pack()
-
-        self.resend_button = tk.Button(self.current_frame, text="Resend OTP", state="disabled", command=self.resend_otp)
-        self.resend_button.pack(pady=10)
-
-        def handle_otp_verification():
-            self.set_button_loading(verify_button)  # Set loading state on button
-            otp = otp_entry.get()
-            response, status = verify_otp(self.user_email, otp)
-            self.root.after(0, lambda: self.reset_button(verify_button, "Verify"))  # Reset button on the main thread
-
+        # Fetch auctions in a separate thread to avoid blocking the UI
+        def fetch_and_display_auctions():
+            auctions, status = get_auctions()
             if status == 200:
-                self.root.after(0, lambda: messagebox.showinfo("Success", "Account verified successfully! Please log in."))
-                self.show_login()  # Redirect to login
+                # Display the fetched auctions
+                if auctions:
+                    for auction in auctions:
+                        tk.Label(self.current_frame, text=auction.get("title", "Untitled Auction")).pack()
+                else:
+                    tk.Label(self.current_frame, text="No auctions available.").pack()
             else:
-                self.root.after(0, lambda: messagebox.showerror("Error", response.get("detail", "Invalid or expired OTP.")))
+                tk.Label(self.current_frame, text="Failed to fetch auctions. Please try again.").pack()
 
-        verify_button = tk.Button(self.current_frame, text="Verify", command=handle_otp_verification)
-        verify_button.pack(pady=10)
+        threading.Thread(target=fetch_and_display_auctions).start()
 
-        # Start the 3-minute countdown timer
-        self.start_timer(timer_label)
+    def show_my_auctions(self):
+        """Display my auctions."""
+        self.clear_frame()
+        self.current_frame = tk.Frame(self.root)
+        self.current_frame.pack(pady=20)
 
-    def start_timer(self, label):
-        """Start a countdown timer and enable the button when it reaches 0."""
-        def countdown():
-            minutes, seconds = divmod(self.timer_seconds, 60)
-            label.config(text=f"Resend OTP in {minutes:02}:{seconds:02}")
+        tk.Label(self.current_frame, text="My Auctions", font=("Arial", 20)).pack(pady=10)
 
-            if self.timer_seconds > 0:
-                self.timer_seconds -= 1
-                # Call this function again after 1 second
-                self.root.after(1000, countdown)
-            else:
-                # Enable the resend button when timer reaches 0
-                self.resend_button.config(state="normal")
+        # Placeholder for user's auctions
+        tk.Label(self.current_frame, text="No auctions available.").pack()
 
-        countdown()
-
-    def resend_otp(self):
-        """Handle resending the OTP using the new endpoint."""
-        self.set_button_loading(self.resend_button)  # Set loading state on button
-        response, status = resend_otp(self.user_email)
-
-        if status == 200:
-            messagebox.showinfo("Success", "A new OTP has been sent to your email.")
-            self.timer_seconds = 180  # Reset the timer to 3 minutes
-            self.start_timer(tk.Label(self.current_frame))  # Restart the timer
-        elif status == 400:
-            messagebox.showwarning("Warning", response.get("detail", "OTP still valid."))
-        elif status == 404:
-            messagebox.showerror("Error", "User not found.")
-        else:
-            messagebox.showerror("Error", "Failed to resend OTP.")
-
-        self.root.after(0, lambda: self.reset_button(self.resend_button, "Resend OTP"))  # Reset button after request
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = AuthApp(root)
+    app = AuctionApp(root)
     root.mainloop()

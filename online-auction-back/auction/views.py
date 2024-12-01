@@ -12,7 +12,7 @@ class AuctionViewSet(viewsets.ModelViewSet):
     """
     queryset = Auction.objects.all()
     serializer_class = AuctionSerializer
-    permission_classes = [IsAdminUserCustom]  # Only admins can create, update, or delete
+    permission_classes = [permissions.AllowAny]  # Only admins can create, update, or delete
 
     @swagger_auto_schema(
         operation_description="List all auctions",
@@ -34,6 +34,7 @@ class AuctionViewSet(viewsets.ModelViewSet):
     )
     def retrieve(self, request, *args, **kwargs):
         """Retrieve details of a specific auction."""
+        self.permission_classes = [permissions.AllowAny]
         return super().retrieve(request, *args, **kwargs)
 
     @swagger_auto_schema(
@@ -47,6 +48,7 @@ class AuctionViewSet(viewsets.ModelViewSet):
     )
     def create(self, request, *args, **kwargs):
         """Create a new auction."""
+        self.permission_classes = [IsAdminUserCustom]
         return super().create(request, *args, **kwargs)
 
     @swagger_auto_schema(
@@ -60,6 +62,7 @@ class AuctionViewSet(viewsets.ModelViewSet):
     )
     def update(self, request, *args, **kwargs):
         """Update a specific auction."""
+        self.permission_classes = [IsAdminUserCustom]
         return super().update(request, *args, **kwargs)
 
     @swagger_auto_schema(
@@ -72,4 +75,5 @@ class AuctionViewSet(viewsets.ModelViewSet):
     )
     def destroy(self, request, *args, **kwargs):
         """Delete a specific auction."""
+        self.permission_classes = [IsAdminUserCustom]
         return super().destroy(request, *args, **kwargs)
