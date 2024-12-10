@@ -1,3 +1,4 @@
+from tkinter import messagebox
 import requests
 import utils
 
@@ -39,4 +40,17 @@ def resend_otp(email):
     url = f"{utils.BASE_URL}resend-otp/"
     data = {"email": email}
     response = requests.post(url, json=data)
+    return response.json(), response.status_code
+
+def get_logged_in_user_details():
+    """Fetch details of the logged-in user."""
+    url = f"{utils.BASE_URL}me/"
+    headers = utils.get_headers()  # Assuming get_headers() retrieves the Authorization header
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        # If the status code is not 200, handle session expiration
+        messagebox.showerror("Session Expired", "Your session has expired. Please log in again.")
+        # Add code here to redirect to the login screen in your Tkinter app if needed
+        return None, response.status_code
     return response.json(), response.status_code

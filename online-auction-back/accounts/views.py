@@ -72,10 +72,14 @@ class LoginView(APIView):
 
 class UserInfoView(RetrieveAPIView):
     serializer_class = UserInfoSerializer
+    permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(tags=["auth"], operation_description="Get user information")
     def get(self, request, *args, **kwargs):
-        return self.retrieve(request, *args, **kwargs)
+        # Use the authenticated user from the request
+        user = request.user
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
 
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]

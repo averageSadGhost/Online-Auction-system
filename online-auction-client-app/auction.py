@@ -2,17 +2,12 @@ from tkinter import messagebox
 import requests
 import utils
 
-def get_headers():
-    """Get headers with the authorization token."""
-    token = utils.load_token()  # Load the token
-    if token:
-        return {"Authorization": f"Token {token}"}
-    return {}
+
 
 def get_auctions():
     """Fetch the list of all auctions."""
     url = f"{utils.BASE_URL}auctions/"
-    headers = get_headers()
+    headers = utils.get_headers()
     response = requests.get(url, headers=headers)
     
     if response.status_code != 200:
@@ -25,27 +20,36 @@ def get_auctions():
 def get_auction_details(auction_id):
     """Fetch details of a specific auction."""
     url = f"{utils.BASE_URL}auctions/{auction_id}/"
-    headers = get_headers()
+    headers = utils.get_headers()
     response = requests.get(url, headers=headers)
     return response.json(), response.status_code
 
-def create_auction(data):
-    """Create a new auction."""
-    url = f"{utils.BASE_URL}auctions/"
-    headers = get_headers()
-    response = requests.post(url, json=data, headers=headers)
-    return response.json(), response.status_code
+def join_auction(auction_id):
+    """Call the API to join an auction."""
+    url = f"{utils.BASE_URL}auctions/{auction_id}/join_auction/"
+    headers = utils.get_headers()  # Assume get_headers returns the required headers
 
-def update_auction(auction_id, data):
-    """Update an existing auction."""
-    url = f"{utils.BASE_URL}auctions/{auction_id}/"
-    headers = get_headers()
-    response = requests.put(url, json=data, headers=headers)
-    return response.json(), response.status_code
+    try:
+        response = requests.post(url, headers=headers)
+        return response.json(), response.status_code
+    except requests.RequestException as e:
+        # Log or handle the error
+        print(f"Error joining auction: {e}")
+        return {"error": str(e)}, 500  # Return a default error structure
 
-def delete_auction(auction_id):
-    """Delete an auction."""
-    url = f"{utils.BASE_URL}auctions/{auction_id}/"
-    headers = get_headers()
-    response = requests.delete(url, headers=headers)
-    return response.json(), response.status_code
+def get_my_auctions():
+    """Fetch the list of auctions where the user is a participant."""
+    url = f"{utils.BASE_URL}auctions/my_auctions/"
+    headers = utils.get_headers()
+    
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            messagebox.showerror("Error", "Failed to fetch your auctions. Please try again later.")
+            return None, response.status_code
+        
+        return response.json(), response.status_code
+    except requests.RequestException as e:
+        # Handle exceptions, such as connection errors
+        print(f"Error fetching user's auctions: {e}")
+        return {"error": str(e)}, 500  # Return a default error structure

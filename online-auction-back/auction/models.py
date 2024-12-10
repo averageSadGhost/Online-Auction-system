@@ -16,7 +16,6 @@ class Auction(models.Model):
     image = models.ImageField(upload_to='auction_items/')  # Image for the auction item
     users = models.ManyToManyField(User, related_name='auctions', blank=True, null=True)  # Users participating in the auction
     start_date_time = models.DateTimeField()  # Start date and time of the auction
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_auctions')  # Creator of the auction
     starting_price = models.DecimalField(max_digits=10, decimal_places=2)  # Starting price of the auction
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='scheduled')  # Auction status
 
