@@ -3,8 +3,8 @@ from tkinter import messagebox
 import threading
 from datetime import datetime 
 from auction import get_auction_details, get_auctions, get_my_auctions, join_auction
-from auth import get_logged_in_user_details, login_user, register_user, resend_otp, verify_otp
-from utils import calculate_hours_until, delete_token, load_token  # Assuming load_token function is defined in utils to load the token
+from auth import get_logged_in_user_details, login_user, register_user
+from utils import calculate_hours_until, delete_token, load_token
 from PIL import Image, ImageTk
 from io import BytesIO
 import requests

@@ -50,7 +50,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
+    'huey.contrib.djhuey',
     'drf_yasg',
+    'channels',
     'accounts',
     'auction',
 ]
@@ -73,6 +75,16 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
+
 
 ROOT_URLCONF = 'project.urls'
 
@@ -154,3 +166,12 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'online.auction.mail@gmail.com'
 EMAIL_HOST_PASSWORD = 'vuxp yqlv ctfo egnr'
+
+HUEY = {
+    'huey_class': 'huey.RedisHuey', 
+    'name': 'auction',
+    'url': 'redis://localhost:6379', 
+    'immediate': False, 
+}
+
+ASGI_APPLICATION = 'project.asgi.application'

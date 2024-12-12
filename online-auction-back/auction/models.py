@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
+from project import settings
+
 User = get_user_model()  # Get the user model (to support custom user models)
 
 class Auction(models.Model):
@@ -14,13 +16,13 @@ class Auction(models.Model):
     title = models.CharField(max_length=200)  # Title of the auction item
     description = models.TextField()  # Description of the auction item
     image = models.ImageField(upload_to='auction_items/')  # Image for the auction item
-    users = models.ManyToManyField(User, related_name='auctions', blank=True, null=True)  # Users participating in the auction
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="auctions", blank=True)
     start_date_time = models.DateTimeField()  # Start date and time of the auction
+    end_date_time = models.DateTimeField()  # End date and time of the auction
     starting_price = models.DecimalField(max_digits=10, decimal_places=2)  # Starting price of the auction
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='scheduled')  # Auction status
 
     def __str__(self):
-
         return self.title  # Return the auction title
 
 class Vote(models.Model):
