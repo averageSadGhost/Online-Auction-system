@@ -437,15 +437,18 @@ class AuctionApp:
             title = auction_details.get("title", "Untitled Auction")
             description = auction_details.get("description", "No description available.")
             start_date_time = auction_details.get("start_date_time", "Not available")
+            end_date_time = auction_details.get("end_date_time", "Not available")
             starting_price = auction_details.get("starting_price", "N/A")
             image_url = auction_details.get("image", "")
             is_participant = auction_details.get("is_participant", False)
 
-            # Format the start_date_time to "year/month/day hour:minutes AM/PM"
+            # Format the start_date_time and end_date_time to "year/month/day hour:minutes AM/PM"
             try:
-                formatted_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S%z").strftime("%Y/%m/%d %I:%M %p")
+                formated_start_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S%z").strftime("%Y/%m/%d %I:%M %p")
+                formated_end_date_time = datetime.strptime(end_date_time, "%Y-%m-%dT%H:%M:%S%z").strftime("%Y/%m/%d %I:%M %p")
             except ValueError:
-                formatted_date_time = "Invalid date format"
+                formated_start_date_time = "Invalid date format"
+                formated_end_date_time = "Invalid date format"
 
             # Display auction title
             tk.Label(self.current_frame, text=title, font=("Arial", 20)).pack(pady=10)
@@ -470,7 +473,8 @@ class AuctionApp:
 
             # Display starting price and start time
             tk.Label(self.current_frame, text=f"Starting Price: {starting_price}", font=("Arial", 14)).pack(pady=10)
-            tk.Label(self.current_frame, text=f"Starts on: {formatted_date_time}", font=("Arial", 14)).pack(pady=10)
+            tk.Label(self.current_frame, text=f"Starts on: {formated_start_date_time}", font=("Arial", 14)).pack(pady=10)
+            tk.Label(self.current_frame, text=f"Ends on: {formated_end_date_time}", font=("Arial", 14)).pack(pady=10)
 
             # Display participation status or join button
             if is_participant:
@@ -509,69 +513,119 @@ class AuctionApp:
             messagebox.showerror("Error", "Failed to join the auction. Please try again.")
 
     def show_my_auctions(self):
-        """Display auctions that the user is participating in."""
+        """Display auctions that the user is participating in with a scrollable view."""
         self.clear_frame()
-        self.current_frame = tk.Frame(self.root)
-        self.current_frame.pack(pady=20)
+        self.current_frame = tk.Frame(self.root)  # Reinitialize the frame
+        self.current_frame.pack(pady=20, expand=True)
 
-        tk.Label(self.current_frame, text="My Auctions", font=("Arial", 20)).pack(pady=10)
+        title_frame = tk.Frame(self.current_frame)
+        title_frame.pack(fill="x")
+
+        tk.Label(title_frame, text="My Auctions", font=("Arial", 20)).pack(pady=10)
+
+        wrapper_frame = tk.Frame(self.current_frame)
+        wrapper_frame.pack(expand=True, fill="both")
+
+        canvas = tk.Canvas(wrapper_frame, height=400, width=250)
+        scrollbar = tk.Scrollbar(wrapper_frame, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+
+        wrapper_frame.grid_rowconfigure(0, weight=1)
+        wrapper_frame.grid_columnconfigure(0, weight=1)
+
+        scrollable_frame = tk.Frame(canvas)
+        scrollable_frame.bind(
+            "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="n")
 
         # Fetch and display user's auctions
         def fetch_and_display_my_auctions():
-            auctions, status = get_my_auctions()  # This assumes the my_auctions function is defined elsewhere
+            auctions, status = get_my_auctions()
             if status == 200:
                 if auctions:
                     for auction in auctions:
-                        frame = tk.Frame(self.current_frame, pady=10)
-                        frame.pack()
+                        frame = tk.Frame(scrollable_frame, pady=10)
+                        frame.pack(fill="x")
 
                         title = auction.get("title", "Untitled Auction")
                         start_time = auction.get("start_date_time", "Not available")
                         starting_price = auction.get("starting_price", "N/A")
-                        status_text = auction.get("status", "Unknown status")  # Assuming there's a 'status' key
+                        status_text = auction.get("status", "Unknown status")
 
-                        # Create a subframe for each auction
-                        auction_frame = tk.Frame(frame)
-                        auction_frame.pack(pady=10)
+                        # Format the start_date_time to "year/month/day hour:minutes AM/PM"
+                        try:
+                            formatted_date_time = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S%z").strftime("%Y/%m/%d %I:%M %p")
+                        except ValueError:
+                            formatted_date_time = "Invalid date format"
 
-                        # Display the title and starting price
-                        title_frame = tk.Frame(auction_frame)
-                        title_frame.pack(fill="x")
+                        # Title and starting price frame
+                        title_price_frame = tk.Frame(frame)
+                        title_price_frame.pack(fill="x")
 
-                        tk.Label(title_frame, text=title, font=("Arial", 14)).pack(side="left", padx=5)
-                        tk.Label(title_frame, text=f"Starting at {starting_price}", font=("Arial", 12)).pack(side="left", padx=5)
+                        # Centered title
+                        tk.Label(
+                            title_price_frame, 
+                            text=title, 
+                            font=("Arial", 14, "bold"), 
+                            wraplength=250, 
+                            justify="center"
+                        ).pack(anchor="center", pady=(0, 5))
 
-                        # Display the start date
-                        tk.Label(auction_frame, text=f"Start Date: {start_time}", font=("Arial", 12)).pack()
+                        # Centered starting price
+                        tk.Label(
+                            title_price_frame, 
+                            text=f"Starting at {starting_price}", 
+                            font=("Arial", 12),
+                            justify="center"
+                        ).pack(anchor="center", pady=(0, 10))
 
-                        # Fetch and display the image
+                        # Display the image
                         image_url = auction.get("image", "")
                         try:
                             response = requests.get(image_url)
                             response.raise_for_status()
                             image_data = BytesIO(response.content)
                             pil_image = Image.open(image_data)
-                            pil_image = pil_image.resize((200, 200))  # Resize to fit
+                            pil_image = pil_image.resize((200, 200))
                             tk_image = ImageTk.PhotoImage(pil_image)
 
-                            img_label = tk.Label(auction_frame, image=tk_image)
-                            img_label.image = tk_image  # Keep a reference to avoid garbage collection
-                            img_label.pack(pady=10)
+                            img_label = tk.Label(frame, image=tk_image)
+                            img_label.image = tk_image
+                            img_label.pack()
                         except requests.RequestException:
-                            tk.Label(auction_frame, text="[Image not available]").pack()
+                            tk.Label(frame, text="[Image not available]").pack()
 
-                        # Display the status of the auction
-                        tk.Label(auction_frame, text=f"Status: {status_text}", font=("Arial", 12), fg="gray").pack(pady=5)
+                        # Display the start date and status
+                        tk.Label(
+                            frame, 
+                            text=f"Start Date: {formatted_date_time}", 
+                            font=("Arial", 12)
+                        ).pack()
 
-                        # Add a button under the status to view details
-                        button_text = "View Auction"
-                        button = tk.Button(auction_frame, text=button_text, command=lambda auction_id=auction["id"]: self.show_auction_details(auction_id))
+                        tk.Label(
+                            frame, 
+                            text=f"Status: {status_text}", 
+                            font=("Arial", 12), 
+                            fg="gray"
+                        ).pack(pady=5)
+
+                        # View Auction button
+                        button = tk.Button(
+                            frame,
+                            text="View Auction", 
+                            command=lambda auction_id=auction["id"]: self.show_auction_details(auction_id)
+                        )
                         button.pack(pady=10)
 
                 else:
-                    tk.Label(self.current_frame, text="You have not joined any auctions yet.").pack()
+                    tk.Label(scrollable_frame, text="You have not joined any auctions yet.").pack()
             else:
-                tk.Label(self.current_frame, text="Failed to fetch your auctions. Please try again.").pack()
+                tk.Label(scrollable_frame, text="Failed to fetch your auctions. Please try again.").pack()
 
         threading.Thread(target=fetch_and_display_my_auctions).start()
 

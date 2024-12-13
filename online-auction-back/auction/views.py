@@ -15,7 +15,7 @@ class AuctionViewSet(viewsets.ModelViewSet):
     """
     A viewset for viewing and editing auction instances.
     """
-    queryset = Auction.objects.filter(start_date_time__gt=now()).order_by('start_date_time')
+    queryset = Auction.objects.order_by('start_date_time')
     serializer_class = AuctionSerializer
     permission_classes = [IsAuthenticated]  # Only authenticated users can access
 
@@ -28,7 +28,7 @@ class AuctionViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         """Retrieve a list of auctions where the user is NOT a participant."""
         user = request.user
-        queryset = self.queryset.filter(status='Scheduled').exclude(users=user)
+        queryset = self.queryset.filter(status='scheduled').exclude(users=user)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -93,7 +93,7 @@ class AuctionViewSet(viewsets.ModelViewSet):
     def my_auctions(self, request):
         """Retrieve a list of auctions where the user is a participant."""
         user = request.user
-        queryset = self.queryset.filter(users=user)  # Only include auctions where the user is a participant
+        queryset = Auction.objects.filter(users=user)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
