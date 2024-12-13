@@ -28,7 +28,7 @@ class AuctionViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         """Retrieve a list of auctions where the user is NOT a participant."""
         user = request.user
-        queryset = self.queryset.exclude(users=user)  # Exclude auctions where the user is a participant
+        queryset = self.queryset.filter(status='Scheduled').exclude(users=user)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 

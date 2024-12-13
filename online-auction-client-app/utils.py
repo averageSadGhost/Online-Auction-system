@@ -33,12 +33,16 @@ def delete_token():
         return False
 
 def calculate_hours_until(start_time):
-    """Calculate the number of hours until the given start time."""
+    """Calculate the number of hours and minutes until the given start time."""
     start_dt = datetime.fromisoformat(start_time.replace("Z", "+00:00"))  # Convert ISO 8601 to datetime
     now_dt = datetime.now(timezone.utc)  # Get current time in UTC
     delta = start_dt - now_dt
-    hours_left = max(delta.total_seconds() // 3600, 0)  # Ensure non-negative values
-    return int(hours_left)
+    total_seconds = max(delta.total_seconds(), 0)  # Ensure non-negative values
+    
+    hours_left = total_seconds // 3600  # Full hours
+    minutes_left = (total_seconds % 3600) // 60  # Remaining minutes
+    
+    return int(hours_left), int(minutes_left)
 
 def get_headers():
     """Get headers with the authorization token."""

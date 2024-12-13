@@ -3,7 +3,7 @@ from tkinter import messagebox
 import threading
 from datetime import datetime 
 from auction import get_auction_details, get_auctions, get_my_auctions, join_auction
-from auth import get_logged_in_user_details, login_user, register_user
+from auth import get_logged_in_user_details, login_user, register_user, resend_otp, verify_otp
 from utils import calculate_hours_until, delete_token, load_token
 from PIL import Image, ImageTk
 from io import BytesIO
@@ -145,6 +145,111 @@ class AuctionApp:
             self.root.after(0, self.show_otp_screen)  # Go to OTP screen
         else:
             self.root.after(0, lambda: messagebox.showerror("Error", str(response)))
+            
+    def show_otp_screen(self):
+        """Display the OTP verification screen."""
+        self.clear_frame()
+        self.current_frame = tk.Frame(self.root)
+        self.current_frame.pack(pady=20)
+
+        tk.Label(self.current_frame, text="OTP Verification", font=("Arial", 20)).pack(pady=10)
+        tk.Label(self.current_frame, text=f"Please enter the OTP sent to {self.user_email}", wraplength=300).pack()
+
+        # OTP entry field
+        otp_entry = tk.Entry(self.current_frame, font=("Arial", 14), justify='center', width=6)
+        otp_entry.pack(pady=20)
+
+        # Timer label with better visibility
+        timer_label = tk.Label(
+            self.current_frame,
+            text="",
+            font=("Arial", 12),
+            fg="blue"
+        )
+        timer_label.pack(pady=10)
+
+        # Buttons frame
+        buttons_frame = tk.Frame(self.current_frame)
+        buttons_frame.pack(pady=10)
+
+        verify_button = tk.Button(buttons_frame, text="Verify OTP", width=15)
+        verify_button.pack(side=tk.LEFT, padx=5)
+
+        resend_button = tk.Button(buttons_frame, text="Resend OTP", width=15, state=tk.DISABLED)
+        resend_button.pack(side=tk.LEFT, padx=5)
+
+        def update_timer(remaining):
+            """Update the timer display."""
+            if remaining <= 0:
+                timer_label.config(text="You can now resend the OTP", fg="green")
+                resend_button.config(state=tk.NORMAL)
+                return
+            
+            minutes = remaining // 60
+            seconds = remaining % 60
+            timer_label.config(
+                text=f"Resend available in {minutes:02d}:{seconds:02d}",
+                fg="blue"
+            )
+            self.root.after(1000, update_timer, remaining - 1)
+
+        def handle_verify():
+            """Handle OTP verification."""
+            if not otp_entry.get().strip():
+                messagebox.showwarning("Warning", "Please enter the OTP")
+                return
+                
+            self.set_button_loading(verify_button)
+            otp = otp_entry.get()
+            
+            threading.Thread(target=verify_otp_thread, args=(otp,)).start()
+
+        def verify_otp_thread(otp):
+            """Thread for OTP verification."""
+            response, status = verify_otp(self.user_email, otp)
+            
+            self.root.after(0, lambda: self.reset_button(verify_button, "Verify OTP"))
+
+            if status == 200:
+                self.root.after(0, lambda: messagebox.showinfo("Success", "Email verified successfully!"))
+                self.root.after(0, self.show_login)
+            else:
+                error_msg = response.get("detail", "Invalid OTP. Please try again.")
+                self.root.after(0, lambda: messagebox.showerror("Error", error_msg))
+
+        def handle_resend():
+            """Handle OTP resend."""
+            self.set_button_loading(resend_button)
+            threading.Thread(target=resend_otp_thread).start()
+
+        def resend_otp_thread():
+            """Thread for resending OTP."""
+            response, status = resend_otp(self.user_email)
+            
+            self.root.after(0, lambda: self.reset_button(resend_button, "Resend OTP"))
+
+            if status == 200:
+                self.root.after(0, lambda: messagebox.showinfo("Success", "OTP resent successfully!"))
+                resend_button.config(state=tk.DISABLED)
+                timer_label.config(fg="blue")
+                update_timer(self.timer_seconds)
+            else:
+                error_msg = response.get("detail", "Failed to resend OTP. Please try again.")
+                self.root.after(0, lambda: messagebox.showerror("Error", error_msg))
+
+        # Configure button commands
+        verify_button.config(command=handle_verify)
+        resend_button.config(command=handle_resend)
+
+        # Start the initial timer
+        update_timer(self.timer_seconds)
+
+        # Add a back to login button
+        tk.Button(
+            self.current_frame,
+            text="Back to Login",
+            command=self.show_login
+        ).pack(pady=20)
 
     def show_navbar(self):
         """Display the navigation bar after login."""
@@ -272,21 +377,36 @@ class AuctionApp:
                         except requests.RequestException:
                             tk.Label(frame, text="[Image not available]").pack()
 
+                        # Create a title_frame for each auction
                         title_frame = tk.Frame(frame)
-                        title_frame.pack()
+                        title_frame.pack(fill="x")
 
                         title = auction.get("title", "Untitled Auction")
                         start_time = auction.get("start_date_time")
 
-                        tk.Label(title_frame, text=title, font=("Arial", 14)).pack(side="left", padx=5)
+                        # Title Label in the center (with columnspan to span the full width)
+                        title_label = tk.Label(title_frame, text=title, font=("Arial", 14), wraplength=230, anchor="center")
+                        title_label.grid(row=0, column=0, sticky="nsew", padx=25, pady=5)
 
-                        hours_left = calculate_hours_until(start_time)
-                        tk.Label(
+                        # Time Label in the row below the title
+                        time_left = calculate_hours_until(start_time)
+                        time_text = ""
+                        if time_left[0] == 0:
+                            time_text = f"Starting in {time_left[1]} minutes"
+                        elif time_left[1] == 0:
+                            time_text = f"Starting in {time_left[0]} hours"
+                        else:
+                            time_text = f"Starting in {time_left[0]} hours {time_left[1]} minutes"
+
+                        # Center the time label
+                        time_label = tk.Label(
                             title_frame,
-                            text=f"Starting in {hours_left} hours",
+                            text=time_text,
                             font=("Arial", 12),
-                            fg="gray"
-                        ).pack(side="left", padx=5)
+                            fg="gray",
+                            anchor="center"
+                        )
+                        time_label.grid(row=1, column=0, padx=25, pady=5)
 
                         # Add a button under the title to view details
                         button_text = f"View auction details"
@@ -299,6 +419,9 @@ class AuctionApp:
                 tk.Label(scrollable_frame, text="Failed to fetch auctions. Please try again.").pack()
 
         threading.Thread(target=fetch_and_display_auctions).start()
+
+
+
 
 
 
@@ -320,7 +443,7 @@ class AuctionApp:
 
             # Format the start_date_time to "year/month/day hour:minutes AM/PM"
             try:
-                formatted_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%SZ").strftime("%Y/%m/%d %I:%M %p")
+                formatted_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S%z").strftime("%Y/%m/%d %I:%M %p")
             except ValueError:
                 formatted_date_time = "Invalid date format"
 
