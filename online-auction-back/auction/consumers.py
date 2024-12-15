@@ -70,10 +70,15 @@ class AuctionConsumer(AsyncWebsocketConsumer):
         try:
             auction = Auction.objects.get(id=self.auction_id)
             last_vote = auction.votes.order_by('-id').first()
+            
+            # Dynamically generate the absolute image URL for local development
+            base_url = "http://127.0.0.1:9000"  # Replace with your local server URL if different
+            image_url = f"{base_url}{auction.image.url}" if auction.image else None
+
             return {
                 "title": auction.title,
                 "description": auction.description,
-                "image": auction.image.url if auction.image else None,
+                "image": image_url,
                 "starting_price": str(auction.starting_price),
                 "status": auction.status,
                 "last_vote": {

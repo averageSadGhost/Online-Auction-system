@@ -4,6 +4,7 @@ import os
 from tkinter import messagebox
 
 BASE_URL = "http://127.0.0.1:9000/api/"
+WEB_SOCKET_URL = "ws://localhost:9000/ws/auction/"
 TOKEN_FILE = "token.json"  # File where the token will be stored
 
 

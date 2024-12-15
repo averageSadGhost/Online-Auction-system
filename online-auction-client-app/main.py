@@ -1,8 +1,9 @@
+import asyncio
 import tkinter as tk
 from tkinter import messagebox
 import threading
 from datetime import datetime 
-from auction import get_auction_details, get_auctions, get_my_auctions, join_auction
+from auction import connect_to_auction_websocket, get_auction_details, get_auctions, get_my_auctions, join_auction, listen_to_auction_updates, place_auction_bid
 from auth import get_logged_in_user_details, login_user, register_user, resend_otp, verify_otp
 from utils import calculate_hours_until, delete_token, load_token
 from PIL import Image, ImageTk
@@ -420,20 +421,17 @@ class AuctionApp:
 
         threading.Thread(target=fetch_and_display_auctions).start()
 
-
-
-
-
-
-
     def show_auction_details(self, auction_id):
         """Display the details of a specific auction."""
         self.clear_frame()
         self.current_frame = tk.Frame(self.root)
         self.current_frame.pack(pady=20)
 
+        # Fetch auction details
         auction_details, status = get_auction_details(auction_id)
+        
         if status == 200:
+            # Extract auction details with default values
             title = auction_details.get("title", "Untitled Auction")
             description = auction_details.get("description", "No description available.")
             start_date_time = auction_details.get("start_date_time", "Not available")
@@ -441,8 +439,9 @@ class AuctionApp:
             starting_price = auction_details.get("starting_price", "N/A")
             image_url = auction_details.get("image", "")
             is_participant = auction_details.get("is_participant", False)
+            auction_status = auction_details.get("status", "")
 
-            # Format the start_date_time and end_date_time to "year/month/day hour:minutes AM/PM"
+            # Format dates
             try:
                 formated_start_date_time = datetime.strptime(start_date_time, "%Y-%m-%dT%H:%M:%S%z").strftime("%Y/%m/%d %I:%M %p")
                 formated_end_date_time = datetime.strptime(end_date_time, "%Y-%m-%dT%H:%M:%S%z").strftime("%Y/%m/%d %I:%M %p")
@@ -471,20 +470,43 @@ class AuctionApp:
             tk.Label(self.current_frame, text="Description:", font=("Arial", 14)).pack(pady=10)
             tk.Label(self.current_frame, text=description, font=("Arial", 12), wraplength=400).pack(pady=10)
 
-            # Display starting price and start time
+            # Display auction details
             tk.Label(self.current_frame, text=f"Starting Price: {starting_price}", font=("Arial", 14)).pack(pady=10)
             tk.Label(self.current_frame, text=f"Starts on: {formated_start_date_time}", font=("Arial", 14)).pack(pady=10)
             tk.Label(self.current_frame, text=f"Ends on: {formated_end_date_time}", font=("Arial", 14)).pack(pady=10)
 
-            # Display participation status or join button
+            # Display auction status
+            status_label = tk.Label(
+                self.current_frame, 
+                text=f"Auction Status: {auction_status}", 
+                font=("Arial", 14)
+            )
+            status_label.pack(pady=10)
+
+            # Participation and bidding options
             if is_participant:
-                tk.Label(
+                participant_label = tk.Label(
                     self.current_frame,
-                    text="You are already a participant in this auction.",
+                    text="You are a participant in this auction.",
                     font=("Arial", 14),
                     fg="green"
-                ).pack(pady=20)
+                )
+                participant_label.pack(pady=10)
+
+                # Show Start Bidding button if auction is started and user is a participant
+                if auction_status.lower() == "started":
+                    start_bidding_button = tk.Button(
+                        self.current_frame,
+                        text="Start Bidding",
+                        font=("Arial", 14),
+                        command=lambda: self.open_bidding_screen(auction_id),
+                        bg="green",
+                        fg="white"
+                    )
+                    start_bidding_button.pack(pady=20)
+
             else:
+                # Join auction button for non-participants
                 join_button = tk.Button(
                     self.current_frame,
                     text="Join Auction",
@@ -494,8 +516,202 @@ class AuctionApp:
                 join_button.pack(pady=20)
 
         else:
+            # Error handling for failed auction details fetch
             tk.Label(self.current_frame, text="Failed to fetch auction details. Please try again.").pack(pady=10)
 
+    def open_bidding_screen(self, auction_id):
+        """
+        Open the bidding screen for a specific auction.
+        """
+        try:
+            # Clear the current frame
+            self.clear_frame()
+            
+            # Create a new frame for the bidding screen
+            self.current_frame = tk.Frame(self.root)
+            self.current_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
+            
+            # Connect to WebSocket and ensure we have the initial data
+            self.current_auction_ws = connect_to_auction_websocket(auction_id)
+            
+            if not self.current_auction_ws or not self.current_auction_ws.auction_data:
+                messagebox.showerror("Connection Error", "Failed to connect to the auction or receive initial data.")
+                self.show_auction_details(auction_id)
+                return
+            
+            # Get the initial auction data
+            auction_data = self.current_auction_ws.auction_data
+            
+            # Create main content frame
+            content_frame = tk.Frame(self.current_frame)
+            content_frame.pack(fill=tk.BOTH, expand=True)
+            
+            # Auction title
+            title = auction_data.get('title', 'Auction Bidding')
+            title_label = tk.Label(
+                content_frame,
+                text=title,
+                font=("Arial", 20, "bold"),
+                wraplength=500
+            )
+            title_label.pack(pady=(0, 20))
+            
+            # Bid information frame
+            bid_info_frame = tk.Frame(content_frame)
+            bid_info_frame.pack(fill=tk.X, pady=10)
+            
+            # Create a mutable container for the current price
+            price_data = {
+                'current_price': auction_data.get('starting_price', '0'),
+                'current_bidder': 'No bids yet'
+            }
+            
+            # Get initial bid information
+            last_bid = auction_data.get('last_vote')
+            if last_bid:
+                price_data['current_price'] = last_bid.get('price')
+                price_data['current_bidder'] = last_bid.get('user', 'No bids yet')
+            
+            # Current bid information
+            price_label = tk.Label(
+                bid_info_frame,
+                text=f"Current Highest Bid: ${price_data['current_price']}",
+                font=("Arial", 16)
+            )
+            price_label.pack(pady=5)
+            
+            bidder_label = tk.Label(
+                bid_info_frame,
+                text=f"Highest Bidder: {price_data['current_bidder']}",
+                font=("Arial", 14)
+            )
+            bidder_label.pack(pady=5)
+            
+            # Bidding controls frame
+            bidding_frame = tk.Frame(content_frame)
+            bidding_frame.pack(pady=20)
+            
+            # Bid entry section
+            entry_frame = tk.Frame(bidding_frame)
+            entry_frame.pack(fill=tk.X, pady=10)
+            
+            tk.Label(
+                entry_frame,
+                text="Your Bid ($):",
+                font=("Arial", 12)
+            ).pack(side=tk.LEFT, padx=5)
+            
+            bid_entry = tk.Entry(
+                entry_frame,
+                font=("Arial", 12),
+                width=15
+            )
+            bid_entry.pack(side=tk.LEFT, padx=5)
+            
+            # Bid submission function
+            def submit_bid():
+                try:
+                    bid_amount = float(bid_entry.get())
+                    if bid_amount <= float(price_data['current_price']):
+                        messagebox.showerror(
+                            "Invalid Bid",
+                            f"Your bid must be higher than the current bid (${price_data['current_price']})"
+                        )
+                        return
+                    
+                    bid_response = place_auction_bid(self.current_auction_ws, bid_amount)
+                    
+                    if bid_response and bid_response.get('success'):
+                        messagebox.showinfo("Success", bid_response['success'])
+                        bid_entry.delete(0, tk.END)  # Clear entry after successful bid
+                    elif bid_response and bid_response.get('error'):
+                        messagebox.showerror("Bid Error", bid_response['error'])
+                    else:
+                        messagebox.showerror(
+                            "Bid Error",
+                            "Failed to place bid. Please try again."
+                        )
+                
+                except ValueError:
+                    messagebox.showerror(
+                        "Invalid Input",
+                        "Please enter a valid number for your bid."
+                    )
+            
+            # Submit button
+            submit_button = tk.Button(
+                entry_frame,
+                text="Submit Bid",
+                command=submit_bid,
+                font=("Arial", 12),
+                bg="#4CAF50",
+                fg="white",
+                padx=20
+            )
+            submit_button.pack(side=tk.LEFT, padx=5)
+            
+            # Back button
+            back_button = tk.Button(
+                content_frame,
+                text="Back to Auction Details",
+                command=lambda: self.handle_back_to_details(auction_id),
+                font=("Arial", 12)
+            )
+            back_button.pack(pady=20)
+            
+            # Start WebSocket update listener in a separate thread
+            # def update_bid_info():
+            #     try:
+            #         for update in listen_to_auction_updates(self.current_auction_ws):
+            #             if update.get('last_vote'):
+            #                 price_data['current_price'] = update['last_vote'].get('price')
+            #                 price_data['current_bidder'] = update['last_vote'].get('user', 'Unknown')
+            #             else:
+            #                 price_data['current_price'] = update.get('starting_price', price_data['current_price'])
+            #                 price_data['current_bidder'] = 'No bids yet'
+                            
+            #             # Update labels in the main thread
+            #             self.root.after(0, lambda: price_label.config(
+            #                 text=f"Current Highest Bid: ${price_data['current_price']}"
+            #             ))
+            #             self.root.after(0, lambda: bidder_label.config(
+            #                 text=f"Highest Bidder: {price_data['current_bidder']}"
+            #             ))
+                            
+                # except Exception as e:
+                #     print(f"Error in update listener: {e}")
+                #     # Attempt to reconnect or show error in main thread
+                #     self.root.after(0, lambda: messagebox.showerror(
+                #         "Connection Error",
+                #         "Lost connection to auction. Please refresh."
+                #     ))
+            
+            # # Start update listener thread
+            # import threading
+            # update_thread = threading.Thread(target=update_bid_info, daemon=True)
+            # update_thread.start()
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open bidding screen: {str(e)}")
+            self.show_auction_details(auction_id)
+        
+    def handle_back_to_details(self, auction_id):
+        """Handle back button click with proper cleanup"""
+        try:
+            if self.current_auction_ws:
+                # Close WebSocket connection
+                async def close_ws():
+                    await self.current_auction_ws.close()
+                
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(close_ws())
+            
+            # Return to auction details
+            self.show_auction_details(auction_id)
+            
+        except Exception as e:
+            print(f"Error during cleanup: {e}")
+            self.show_auction_details(auction_id)
     def handle_join_auction(self, auction_id):
         """Handle the action to join an auction."""
         response, status = join_auction(auction_id)  # Call the join_auction API function
