@@ -1,12 +1,11 @@
-from rest_framework import viewsets, permissions
-from accounts.permissions import IsAdminUserCustom
+from rest_framework import viewsets
 from rest_framework.response import Response
 from .models import Auction
 from .serializers import AuctionSerializer
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from django.utils.timezone import now
 from rest_framework.decorators import action
+from django.db.models import Case, When, IntegerField
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import NotFound, ValidationError
 
@@ -93,7 +92,15 @@ class AuctionViewSet(viewsets.ModelViewSet):
     def my_auctions(self, request):
         """Retrieve a list of auctions where the user is a participant."""
         user = request.user
-        queryset = Auction.objects.filter(users=user)
+        queryset = Auction.objects.filter(users=user).annotate(
+            status_order=Case(
+                When(status='started', then=0),
+                When(status='scheduled', then=1),
+                When(status='ended', then=2),
+                default=3,
+                output_field=IntegerField(),
+            )
+        ).order_by('status_order')
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 

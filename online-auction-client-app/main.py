@@ -9,7 +9,7 @@ from utils import calculate_hours_until, delete_token, load_token
 from PIL import Image, ImageTk
 from io import BytesIO
 import requests
-
+from queue import Queue
 
 
 class AuctionApp:
@@ -611,33 +611,72 @@ class AuctionApp:
             # Bid submission function
             def submit_bid():
                 try:
-                    bid_amount = float(bid_entry.get())
-                    if bid_amount <= float(price_data['current_price']):
+                    # Get and sanitize bid amount
+                    bid_amount_str = bid_entry.get().strip()
+                    bid_amount = float(bid_amount_str)  # Convert to float
+
+                    # Get and sanitize current price
+                    current_price_str = price_data['current_price'].strip()
+                    current_price = float(current_price_str)  # Convert to float
+
+                    # Check if bid amount is valid
+                    if bid_amount <= current_price:
                         messagebox.showerror(
                             "Invalid Bid",
-                            f"Your bid must be higher than the current bid (${price_data['current_price']})"
+                            f"Your bid must be higher than the current bid (${current_price})"
                         )
                         return
-                    
-                    bid_response = place_auction_bid(self.current_auction_ws, bid_amount)
-                    
-                    if bid_response and bid_response.get('success'):
-                        messagebox.showinfo("Success", bid_response['success'])
-                        bid_entry.delete(0, tk.END)  # Clear entry after successful bid
-                    elif bid_response and bid_response.get('error'):
-                        messagebox.showerror("Bid Error", bid_response['error'])
-                    else:
-                        messagebox.showerror(
-                            "Bid Error",
-                            "Failed to place bid. Please try again."
-                        )
-                
+
+                    # Disable the submit button during bid placement
+                    submit_button.config(state=tk.DISABLED, text="Placing Bid...")
+
+                    def process_bid_response():
+                        try:
+                            # Place the bid
+                            bid_response = place_auction_bid(self.current_auction_ws, bid_amount)
+
+                            # Re-enable the submit button
+                            submit_button.config(state=tk.NORMAL, text="Submit Bid")
+
+                            # Process the bid response
+                            if bid_response:
+                                if bid_response.get('success'):
+                                    messagebox.showinfo("Success", bid_response['success'])
+                                    bid_entry.delete(0, tk.END)  # Clear entry after successful bid
+
+                                    # Refresh the screen by calling open_bidding_screen after the user clicks "OK"
+                                    self.root.after(0, lambda: self.open_bidding_screen(auction_id))
+
+                                elif bid_response.get('error'):
+                                    messagebox.showerror("Bid Error", bid_response['error'])
+                                else:
+                                    # Handle unexpected structure of bid_response
+                                    messagebox.showerror(
+                                        "Bid Error",
+                                        f"Unexpected response from server: {bid_response}"
+                                    )
+                            else:
+                                # Handle case where bid_response is None or empty
+                                messagebox.showerror(
+                                    "Bid Error",
+                                    "No response from server. Please try again later."
+                                )
+                        except Exception as e:
+                            # Re-enable the submit button in case of an unexpected error
+                            submit_button.config(state=tk.NORMAL, text="Submit Bid")
+                            messagebox.showerror("Unexpected Error", f"An error occurred: {str(e)}")
+
+                    # Use after method to process bid in the main thread
+                    self.root.after(0, process_bid_response)
+
                 except ValueError:
+                    # Handle invalid input for bid amount
                     messagebox.showerror(
                         "Invalid Input",
                         "Please enter a valid number for your bid."
                     )
-            
+
+                        
             # Submit button
             submit_button = tk.Button(
                 entry_frame,
@@ -660,36 +699,57 @@ class AuctionApp:
             back_button.pack(pady=20)
             
             # Start WebSocket update listener in a separate thread
-            # def update_bid_info():
-            #     try:
-            #         for update in listen_to_auction_updates(self.current_auction_ws):
-            #             if update.get('last_vote'):
-            #                 price_data['current_price'] = update['last_vote'].get('price')
-            #                 price_data['current_bidder'] = update['last_vote'].get('user', 'Unknown')
-            #             else:
-            #                 price_data['current_price'] = update.get('starting_price', price_data['current_price'])
-            #                 price_data['current_bidder'] = 'No bids yet'
-                            
-            #             # Update labels in the main thread
-            #             self.root.after(0, lambda: price_label.config(
-            #                 text=f"Current Highest Bid: ${price_data['current_price']}"
-            #             ))
-            #             self.root.after(0, lambda: bidder_label.config(
-            #                 text=f"Highest Bidder: {price_data['current_bidder']}"
-            #             ))
-                            
-                # except Exception as e:
-                #     print(f"Error in update listener: {e}")
-                #     # Attempt to reconnect or show error in main thread
-                #     self.root.after(0, lambda: messagebox.showerror(
-                #         "Connection Error",
-                #         "Lost connection to auction. Please refresh."
-                #     ))
             
-            # # Start update listener thread
-            # import threading
-            # update_thread = threading.Thread(target=update_bid_info, daemon=True)
-            # update_thread.start()
+            
+            def update_bid_info():
+                """Process WebSocket updates and update the UI accordingly."""
+                message_queue = Queue()
+
+                # Create and run the event loop in this thread
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+                try:
+                    # Run the coroutine safely in the event loop of this thread
+                    asyncio.run_coroutine_threadsafe(listen_to_auction_updates(self.current_auction_ws, message_queue), loop)
+                    
+                    # Process messages from the queue
+                    while True:
+                        update = message_queue.get()  # This will block until a message arrives
+                        if update is None:  # Check for stop signal
+                            break
+
+
+                        # Update price and bidder info based on the incoming bid update
+                        if 'last_vote' in update:
+                            last_vote = update['last_vote']
+                            price_data['current_price'] = last_vote.get('price', price_data['current_price'])
+                            price_data['current_bidder'] = last_vote.get('user', 'Unknown')
+                        else:
+                            price_data['current_price'] = update.get('starting_price', price_data['current_price'])
+                            price_data['current_bidder'] = 'No bids yet'
+
+                        # Verify if the after method is actually getting called
+                        self.root.after(0, lambda: price_label.config(
+                            text=f"Current Highest Bid: ${price_data['current_price']}"
+                        ))
+                        self.root.after(0, lambda: bidder_label.config(
+                            text=f"Highest Bidder: {price_data['current_bidder']}"
+                        ))
+
+                except Exception as e:
+                    print(f"Error in update listener: {e}")
+                    self.root.after(0, lambda: messagebox.showerror(
+                        "Connection Error",
+                        "Lost connection to auction. Please refresh."
+                    ))
+                finally:
+                    loop.close()
+
+            # Start update listener thread
+            update_thread = threading.Thread(target=update_bid_info, daemon=True)
+            update_thread.start()
+
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open bidding screen: {str(e)}")

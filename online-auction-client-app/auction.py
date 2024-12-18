@@ -4,6 +4,8 @@ import utils
 import websockets
 import asyncio
 import json
+import threading
+from queue import Queue
 
 def get_auctions():
     """Fetch the list of all auctions."""
@@ -55,12 +57,6 @@ class AuctionWebSocket:
     """Handles WebSocket connection and communication for a specific auction."""
     
     def __init__(self, auction_id, token):
-        """
-        Initialize WebSocket connection for a specific auction.
-        
-        :param auction_id: ID of the auction to connect to
-        :param token: Authentication token for the user
-        """
         self.auction_id = auction_id
         self.token = token
         self.websocket = None
@@ -68,74 +64,47 @@ class AuctionWebSocket:
         self.auction_data = None
 
     async def connect(self):
-        """
-        Establish WebSocket connection and retrieve initial auction data.
-        
-        :return: Auction data or None if connection fails
-        """
+        """Connect to the WebSocket server and get initial data."""
         try:
             # Construct WebSocket URL with token
-            # Note: Replace with your actual WebSocket server URL
             ws_url = f"{utils.WEB_SOCKET_URL}{self.auction_id}/?token={self.token}"
-            
-            # Connect to WebSocket
             self.websocket = await websockets.connect(ws_url)
             self.is_connected = True
-            
+
             # Receive initial auction data
             initial_data = await self.websocket.recv()
             self.auction_data = json.loads(initial_data)
-            
             return self.auction_data
-        
         except Exception as e:
             print(f"WebSocket connection error: {e}")
             return None
 
     async def listen(self):
-        """
-        Continuously listen for auction updates.
-        
-        :return: Generator of auction updates
-        """
+        """Listen for updates from the auction and push to the queue."""
         try:
             while self.is_connected:
                 message = await self.websocket.recv()
                 update = json.loads(message)
                 yield update
-        
         except websockets.exceptions.ConnectionClosed:
-            print("WebSocket connection closed")
+            print("WebSocket connection closed")  # Debugging
             self.is_connected = False
-        
         except Exception as e:
-            print(f"Error receiving message: {e}")
+            print(f"Error receiving message: {e}")  # Debugging
             self.is_connected = False
 
     async def place_bid(self, price):
-        """
-        Place a bid through the WebSocket.
-        
-        :param price: Bid price
-        :return: Bid response
-        """
+        """Send a bid via the WebSocket."""
         if not self.is_connected:
-            print("Not connected to WebSocket")
             return None
 
         try:
-            bid_data = {
-                'action': 'place_bid',
-                'price': str(price)
-            }
+            bid_data = {'action': 'place_bid', 'price': str(price)}
             await self.websocket.send(json.dumps(bid_data))
-            
-            # Wait for and return the bid response
             response = await self.websocket.recv()
             return json.loads(response)
-        
         except Exception as e:
-            print(f"Error placing bid: {e}")
+            print(f"Error placing bid: {e}")  # Debugging
             return None
 
     async def close(self):
@@ -144,68 +113,58 @@ class AuctionWebSocket:
             await self.websocket.close()
             self.is_connected = False
 
+async def listen_to_auction_updates(websocket, message_queue):
+    """Asynchronously listen for auction updates and push to the queue."""
+    try:
+        while websocket.is_connected:
+            message = await websocket.websocket.recv()
+            update = json.loads(message)
+            message_queue.put(update)
+    except Exception as e:
+        print(f"Error in async listener: {e}")
+        message_queue.put(None)  # Signal to stop on error
+
+
 def connect_to_auction_websocket(auction_id):
     """
-    Synchronously connect to an auction WebSocket.
-    
-    :param auction_id: ID of the auction to connect to
-    :return: AuctionWebSocket instance with initialized auction_data
+    Connect to an auction WebSocket and ensure we get the initial data.
     """
-    try:
-        # Get the authentication token
-        token = utils.load_token()
-        
-        # Create async function to connect
-        async def async_connect():
-            ws = AuctionWebSocket(auction_id, token)
-            # Wait for the connection and initial data
-            auction_data = await ws.connect()
-            if auction_data is None:
-                raise Exception("Failed to receive initial auction data")
-            return ws
-        
-        # Run the async connection in the event loop
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(async_connect())
-    
-    except Exception as e:
-        print(f"Failed to connect to WebSocket: {e}")
-        return None
+    token = utils.load_token()
 
-def listen_to_auction_updates(websocket):
-    """
-    Synchronously listen to auction updates.
-    
-    :param websocket: AuctionWebSocket instance
-    :return: Generator of auction updates
-    """
-    try:
-        async def async_listen():
-            async for update in websocket.listen():
-                yield update
-        
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(async_listen())
-    
-    except Exception as e:
-        print(f"Error listening to updates: {e}")
-        return None
+    async def async_connect():
+        ws = AuctionWebSocket(auction_id, token)
+        auction_data = await ws.connect()
+        if auction_data is None:
+            raise Exception("Failed to receive initial auction data")
+        return ws
+
+    # Run the async function in a new event loop thread
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    return loop.run_until_complete(async_connect())
+
 
 def place_auction_bid(websocket, price):
     """
-    Synchronously place a bid in an auction.
-    
-    :param websocket: AuctionWebSocket instance
-    :param price: Bid price
-    :return: Bid response
+    Ensure price is numeric before sending it as part of the bid.
     """
     try:
-        async def async_bid():
-            return await websocket.place_bid(price)
-        
+        price = float(price)  # Convert price to float
+    except ValueError:
+        return {"error": "Invalid price. Please enter a numeric value."}
+
+    async def async_place_bid():
+        return await websocket.place_bid(price)
+
+    try:
+        # Use the existing event loop if available
         loop = asyncio.get_event_loop()
-        return loop.run_until_complete(async_bid())
-    
+        if loop.is_running():
+            return asyncio.run_coroutine_threadsafe(async_place_bid(), loop).result()
+        else:
+            return loop.run_until_complete(async_place_bid())
     except Exception as e:
-        print(f"Error placing bid: {e}")
-        return None
+        print(f"Bid placement error: {e}")
+        return {"error": str(e)}
+
