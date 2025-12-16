@@ -165,22 +165,27 @@ class AuctionConsumer(AsyncWebsocketConsumer):
     def place_bid(self, data):
         try:
             auction = Auction.objects.get(id=self.auction_id)
-            
+
             # Retrieve price from data and convert to Decimal for comparison
             price_str = data.get('price')
-            
+
             if not price_str:
                 return {"error": "Price is required."}
-            
+
             try:
                 # Convert the string price to Decimal
                 price = Decimal(price_str)
             except InvalidOperation:
                 return {"error": "Invalid price format."}
-            
+
             # Ensure the bid is higher than the starting price
             if price <= auction.starting_price:
                 return {"error": f"Bid must be higher than the starting price of {auction.starting_price}."}
+
+            # Get the previous highest bidder before placing new bid
+            previous_highest_vote = auction.votes.order_by('-price').first()
+            previous_highest_bidder = previous_highest_vote.user if previous_highest_vote else None
+            previous_bid_amount = previous_highest_vote.price if previous_highest_vote else None
 
             # Create the vote (bid)
             vote = Vote.objects.create(
@@ -188,7 +193,18 @@ class AuctionConsumer(AsyncWebsocketConsumer):
                 user=self.scope['user'],
                 price=price
             )
-            
+
+            # Send outbid notification if there was a previous highest bidder
+            # and it's not the same user who just placed the new bid
+            if previous_highest_bidder and previous_highest_bidder != self.scope['user']:
+                from auction.tasks import send_outbid_notification
+                send_outbid_notification(
+                    auction_id=auction.id,
+                    outbid_user_id=previous_highest_bidder.id,
+                    previous_bid=float(previous_bid_amount),
+                    current_bid=float(price)
+                )
+
             # Return success message with the bid price
             return {"success": f"Bid of {price} placed successfully."}
         except ObjectDoesNotExist:

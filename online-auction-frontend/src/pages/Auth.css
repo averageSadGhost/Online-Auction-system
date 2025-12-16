@@ -86,6 +86,14 @@
   font-size: 0.95rem;
 }
 
+.auth-description {
+  text-align: center;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
 .form-group {
   margin-bottom: 24px;
 }
@@ -254,46 +262,242 @@
 }
 
 /* OTP Styles */
+.otp-card {
+  max-width: 440px;
+}
+
+.otp-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 24px;
+  background: var(--gradient-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.otp-icon svg {
+  width: 36px;
+  height: 36px;
+  color: white;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 15px rgba(16, 185, 129, 0);
+  }
+}
+
 .otp-info {
   text-align: center;
   color: var(--text-secondary);
-  margin-bottom: 24px;
-  line-height: 1.6;
+  margin-bottom: 32px;
+  line-height: 1.7;
+  font-size: 0.95rem;
 }
 
-.otp-input {
-  text-align: center;
-  letter-spacing: 12px;
-  font-size: 1.5rem !important;
+.otp-info strong {
+  color: var(--primary);
   font-weight: 600;
-  padding: 18px 16px !important;
-  font-family: 'SF Mono', 'Consolas', monospace;
 }
 
-.timer-container {
+/* 6-digit OTP inputs */
+.otp-inputs-container {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.otp-digit-input {
+  width: 52px;
+  height: 64px;
   text-align: center;
-  margin-bottom: 24px;
-  padding: 16px;
-  background: var(--bg-primary);
-  border-radius: var(--radius-md);
-  transition: background-color var(--transition-normal);
-}
-
-.timer-container p {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  margin-bottom: 4px;
-}
-
-.timer {
-  color: var(--secondary);
+  font-size: 1.5rem;
   font-weight: 700;
-  font-size: 1.25rem;
   font-family: 'SF Mono', 'Consolas', monospace;
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  caret-color: var(--primary);
 }
 
-.timer.expired {
+.otp-digit-input:hover {
+  border-color: var(--border-default);
+}
+
+.otp-digit-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px var(--primary-bg);
+  transform: translateY(-2px);
+}
+
+.otp-digit-input.filled {
+  border-color: var(--primary);
+  background: var(--primary-bg);
+}
+
+.otp-digit-input.error {
+  border-color: var(--error);
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.otp-digit-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Circular Timer */
+.timer-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 28px;
+  padding: 20px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+}
+
+.timer-progress-ring {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin-bottom: 12px;
+}
+
+.timer-progress-ring svg {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.timer-ring-bg {
+  fill: none;
+  stroke: var(--border-light);
+  stroke-width: 3;
+}
+
+.timer-ring-progress {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dasharray 1s linear;
+}
+
+[data-theme="dark"] .timer-ring-progress {
+  stroke: var(--primary-light);
+}
+
+.timer-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  color: var(--text-primary);
+}
+
+.timer-text.expired {
   color: var(--error);
+  font-size: 1.5rem;
+}
+
+.timer-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.timer-label strong {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.expired-label {
+  color: var(--error);
+  font-weight: 600;
+}
+
+/* Resend Section */
+.resend-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-light);
+}
+
+.resend-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.btn-resend {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.btn-resend:hover:not(:disabled) {
+  background: var(--primary-bg);
+}
+
+.btn-resend:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* Loading Spinner */
+.btn-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Back Icon */
+.back-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  vertical-align: middle;
 }
 
 /* Responsive */
@@ -307,8 +511,36 @@
     font-size: 1.5rem;
   }
 
-  .otp-input {
-    letter-spacing: 8px;
-    font-size: 1.25rem !important;
+  .otp-card {
+    max-width: 100%;
+  }
+
+  .otp-icon {
+    width: 60px;
+    height: 60px;
+  }
+
+  .otp-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .otp-inputs-container {
+    gap: 6px;
+  }
+
+  .otp-digit-input {
+    width: 44px;
+    height: 56px;
+    font-size: 1.25rem;
+  }
+
+  .timer-progress-ring {
+    width: 70px;
+    height: 70px;
+  }
+
+  .timer-text {
+    font-size: 1rem;
   }
 }

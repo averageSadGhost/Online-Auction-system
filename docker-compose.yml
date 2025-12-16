@@ -1,0 +1,104 @@
+services:
+  # React Frontend
+  frontend:
+    build:
+      context: ./online-auction-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - auction_network
+
+  # Django Backend
+  backend:
+    build:
+      context: ./online-auction-back
+      dockerfile: Dockerfile
+    command: web
+    ports:
+      - "9000:8000"
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+      - data_volume:/app/data
+    environment:
+      - DJANGO_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-change-me-in-production}
+      - DEBUG=False
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,frontend,backend}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/db.sqlite3}
+      - REDIS_URL=redis://redis:6379
+      - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-True}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://frontend:80
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - auction_network
+
+  # Huey Task Queue Worker
+  huey:
+    build:
+      context: ./online-auction-back
+      dockerfile: Dockerfile
+    command: huey
+    volumes:
+      - media_volume:/app/media
+      - data_volume:/app/data
+    environment:
+      - DJANGO_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-change-me-in-production}
+      - DEBUG=False
+      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/db.sqlite3}
+      - REDIS_URL=redis://redis:6379
+      - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-True}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+    depends_on:
+      - redis
+      - backend
+    restart: unless-stopped
+    networks:
+      - auction_network
+
+  # Redis for Channels and Huey
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - auction_network
+
+volumes:
+  static_volume:
+  media_volume:
+  redis_data:
+  data_volume:
+
+networks:
+  auction_network:
+    driver: bridge

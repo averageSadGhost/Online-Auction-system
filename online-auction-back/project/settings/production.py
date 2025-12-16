@@ -22,10 +22,13 @@ if DATABASE_URL:
         'default': dj_database_url.parse(DATABASE_URL)
     }
 else:
+    # SQLite fallback - use a writable data directory
+    DATA_DIR = BASE_DIR / 'data'
+    DATA_DIR.mkdir(exist_ok=True)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'NAME': DATA_DIR / 'db.sqlite3',
         }
     }
 

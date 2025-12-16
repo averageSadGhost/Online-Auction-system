@@ -8,6 +8,13 @@ from drf_yasg import openapi
 
 from project.health import health_check, readiness_check, liveness_check
 
+token_auth = openapi.Parameter(
+    'Authorization',
+    openapi.IN_HEADER,
+    description="Token authentication. Format: 'Token <your-token>'",
+    type=openapi.TYPE_STRING
+)
+
 schema_view = get_schema_view(
     openapi.Info(
         title="Online Auction API",
@@ -19,12 +26,17 @@ A real-time auction platform API with WebSocket support for live bidding.
 
 ## Authentication
 
-All endpoints (except registration, login, and OTP verification) require token authentication.
-
-Include the token in the `Authorization` header:
+Most endpoints require token authentication. Include the token in the `Authorization` header:
 ```
 Authorization: Token your-auth-token-here
 ```
+
+### Public Endpoints (No Authentication Required)
+- `POST /api/register/` - Create a new account
+- `POST /api/verify-otp/` - Verify email with OTP code
+- `POST /api/login/` - Get auth token
+- `POST /api/resend-otp/` - Resend OTP code
+- `GET /api/auctions/featured/` - Get top 3 featured auctions by price
 
 ## REST API Endpoints
 
@@ -32,13 +44,14 @@ Authorization: Token your-auth-token-here
 1. **Register** - Create a new account (`POST /api/register/`)
 2. **Verify OTP** - Verify email with OTP code (`POST /api/verify-otp/`)
 3. **Login** - Get auth token (`POST /api/login/`)
-4. **Get User Info** - Get current user details (`GET /api/me/`)
+4. **Get User Info** - Get current user details (`GET /api/me/`) *[Auth Required]*
 
 ### Auction Flow
-1. **List Auctions** - Browse available auctions (`GET /api/auctions/`)
-2. **Join Auction** - Join an auction (`POST /api/auctions/{id}/join_auction/`)
-3. **My Auctions** - View joined auctions (`GET /api/auctions/my_auctions/`)
-4. **Auction Details** - Get auction info (`GET /api/auctions/{id}/`)
+1. **Featured Auctions** - Get top 3 auctions by price (`GET /api/auctions/featured/`) *[Public]*
+2. **List Auctions** - Browse available auctions (`GET /api/auctions/`) *[Auth Required]*
+3. **Join Auction** - Join an auction (`POST /api/auctions/{id}/join_auction/`) *[Auth Required]*
+4. **My Auctions** - View joined auctions (`GET /api/auctions/my_auctions/`) *[Auth Required]*
+5. **Auction Details** - Get auction info (`GET /api/auctions/{id}/`) *[Auth Required]*
 
 ---
 

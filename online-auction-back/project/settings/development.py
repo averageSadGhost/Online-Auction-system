@@ -27,9 +27,8 @@ DATABASES = {
     }
 }
 
-# Email - Use console backend for development (optional)
-# Uncomment the line below to print emails to console instead of sending
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Email - Use console backend for development (prints emails to console)
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Logging
 LOGGING = {

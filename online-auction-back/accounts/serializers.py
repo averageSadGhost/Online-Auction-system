@@ -41,3 +41,35 @@ class OTPSerializer(serializers.Serializer):
 
 class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField(help_text="User's email address")
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(help_text="User's email address")
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    token = serializers.CharField(help_text="Password reset token")
+    password = serializers.CharField(write_only=True, validators=[validate_password], help_text="New password")
+
+
+class TwoFactorSetupSerializer(serializers.Serializer):
+    """Response serializer for 2FA setup."""
+    secret = serializers.CharField(read_only=True, help_text="Base32 TOTP secret")
+    qr_uri = serializers.CharField(read_only=True, help_text="otpauth:// URI for QR code")
+
+
+class TwoFactorVerifySerializer(serializers.Serializer):
+    """Request serializer for verifying 2FA code."""
+    code = serializers.CharField(max_length=6, min_length=6, help_text="6-digit TOTP code")
+
+
+class TwoFactorDisableSerializer(serializers.Serializer):
+    """Request serializer for disabling 2FA."""
+    password = serializers.CharField(write_only=True, help_text="Account password")
+    code = serializers.CharField(max_length=6, min_length=6, help_text="6-digit TOTP code")
+
+
+class TwoFactorLoginSerializer(serializers.Serializer):
+    """Request serializer for 2FA login verification."""
+    temp_token = serializers.CharField(help_text="Temporary token from login")
+    code = serializers.CharField(max_length=6, min_length=6, help_text="6-digit TOTP code")
