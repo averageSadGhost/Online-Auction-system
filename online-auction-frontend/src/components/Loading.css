@@ -23,7 +23,7 @@
 .loading-spinner::before {
   width: 100%;
   height: 100%;
-  border: 4px solid var(--gray-200);
+  border: 4px solid var(--border-light);
   border-top-color: var(--primary);
   animation: spinner-rotate 1s linear infinite;
 }
@@ -58,7 +58,8 @@
 /* Full page loading variant */
 .loading-container.fullpage {
   min-height: calc(100vh - 70px);
-  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--gray-100) 100%);
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  transition: background var(--transition-normal);
 }
 
 .loading-container.fullpage .loading-spinner {
@@ -122,9 +123,9 @@
 .skeleton {
   background: linear-gradient(
     90deg,
-    var(--gray-100) 25%,
-    var(--gray-200) 50%,
-    var(--gray-100) 75%
+    var(--bg-primary) 25%,
+    var(--border-light) 50%,
+    var(--bg-primary) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;

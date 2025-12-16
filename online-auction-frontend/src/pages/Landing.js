@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { auctionAPI } from '../services/api';
 import { formatCurrency, getTimeRemaining, getStatusColor } from '../utils/formatters';
 import './Landing.css';
 
+const HERO_IMAGES = {
+  watch: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=300&fit=crop&q=80',
+  art: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&h=300&fit=crop&q=80',
+  collectible: 'https://images.unsplash.com/photo-1594787318286-3d835c1d207f?w=400&h=300&fit=crop&q=80',
+};
+
 const Landing = () => {
   const { authenticated } = useAuth();
+  const { toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
   const [featuredAuctions, setFeaturedAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +50,57 @@ const Landing = () => {
 
   return (
     <div className="landing">
+      {/* Landing Navbar */}
+      <nav className="landing-nav">
+        <div className="landing-nav-container">
+          <div className="landing-nav-brand">
+            <div className="landing-nav-logo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <span>AuctionHub</span>
+          </div>
+          <div className="landing-nav-actions">
+            <button
+              className="landing-theme-toggle"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+            >
+              {isDark ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/>
+                  <line x1="12" y1="21" x2="12" y2="23"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="1" y1="12" x2="3" y2="12"/>
+                  <line x1="21" y1="12" x2="23" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+              )}
+            </button>
+            {authenticated ? (
+              <Link to="/auctions" className="landing-nav-btn">
+                Go to Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" className="landing-nav-link">Sign In</Link>
+                <Link to="/register" className="landing-nav-btn">Get Started</Link>
+              </>
+            )}
+          </div>
+        </div>
+      </nav>
+
       {/* Hero Section */}
       <section className="hero">
         <div className="hero-bg">
@@ -90,14 +149,18 @@ const Landing = () => {
         </div>
         <div className="hero-visual">
           <div className="hero-card hero-card-1">
-            <div className="hero-card-image"></div>
+            <div className="hero-card-image">
+              <img src={HERO_IMAGES.watch} alt="Vintage Watch" />
+            </div>
             <div className="hero-card-info">
               <span className="hero-card-title">Vintage Watch</span>
               <span className="hero-card-bid">$2,450</span>
             </div>
           </div>
           <div className="hero-card hero-card-2">
-            <div className="hero-card-image"></div>
+            <div className="hero-card-image">
+              <img src={HERO_IMAGES.art} alt="Art Collection" />
+            </div>
             <div className="hero-card-info">
               <span className="hero-card-title">Art Collection</span>
               <span className="hero-card-bid">$8,900</span>
@@ -105,7 +168,9 @@ const Landing = () => {
           </div>
           <div className="hero-card hero-card-3">
             <div className="hero-card-live">LIVE</div>
-            <div className="hero-card-image"></div>
+            <div className="hero-card-image">
+              <img src={HERO_IMAGES.collectible} alt="Rare Collectible" />
+            </div>
             <div className="hero-card-info">
               <span className="hero-card-title">Rare Collectible</span>
               <span className="hero-card-bid">$12,500</span>

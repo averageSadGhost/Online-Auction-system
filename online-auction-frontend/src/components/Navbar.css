@@ -1,11 +1,11 @@
 .navbar {
-  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-light);
   position: sticky;
   top: 0;
   z-index: 1000;
   backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--navbar-bg);
+  transition: background-color var(--transition-normal), border-color var(--transition-normal);
 }
 
 .navbar-container {
@@ -130,6 +130,37 @@
   stroke: var(--primary);
 }
 
+/* Theme Toggle */
+.navbar-theme-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  margin-left: 8px;
+}
+
+.navbar-theme-toggle svg {
+  width: 20px;
+  height: 20px;
+  stroke: var(--text-secondary);
+  transition: all var(--transition-normal);
+}
+
+.navbar-theme-toggle:hover {
+  background: var(--primary-bg);
+  border-color: var(--primary);
+}
+
+.navbar-theme-toggle:hover svg {
+  stroke: var(--primary);
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .navbar-container {
@@ -175,5 +206,16 @@
   .navbar-avatar {
     width: 36px;
     height: 36px;
+  }
+
+  .navbar-theme-toggle {
+    width: 36px;
+    height: 36px;
+    margin-left: 4px;
+  }
+
+  .navbar-theme-toggle svg {
+    width: 18px;
+    height: 18px;
   }
 }

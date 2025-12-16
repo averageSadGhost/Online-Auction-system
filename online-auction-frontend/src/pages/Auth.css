@@ -7,6 +7,11 @@
   padding: 20px;
   position: relative;
   overflow: hidden;
+  transition: background var(--transition-normal);
+}
+
+[data-theme="dark"] .auth-container {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
 }
 
 /* Background decoration */
@@ -45,6 +50,12 @@
   max-width: 420px;
   position: relative;
   animation: fadeIn 0.4s ease-out;
+  transition: background-color var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+[data-theme="dark"] .auth-card {
+  box-shadow: var(--shadow-xl),
+              0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .auth-card::before {
@@ -95,7 +106,7 @@
   font-size: 1rem;
   box-sizing: border-box;
   transition: all var(--transition-normal);
-  background: var(--bg-secondary);
+  background: var(--input-bg);
   color: var(--text-primary);
 }
 
@@ -199,6 +210,12 @@
   animation: fadeIn 0.3s ease-out;
 }
 
+[data-theme="dark"] .error-message {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.15) 0%, rgba(239, 68, 68, 0.1) 100%);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
 .success-message {
   background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
   color: #16a34a;
@@ -210,6 +227,12 @@
   font-weight: 500;
   border: 1px solid #bbf7d0;
   animation: fadeIn 0.3s ease-out;
+}
+
+[data-theme="dark"] .success-message {
+  background: linear-gradient(135deg, rgba(22, 163, 74, 0.15) 0%, rgba(34, 197, 94, 0.1) 100%);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #4ade80;
 }
 
 .auth-link {
@@ -251,8 +274,9 @@
   text-align: center;
   margin-bottom: 24px;
   padding: 16px;
-  background: var(--gray-50);
+  background: var(--bg-primary);
   border-radius: var(--radius-md);
+  transition: background-color var(--transition-normal);
 }
 
 .timer-container p {

@@ -4,7 +4,8 @@
   align-items: flex-start;
   padding: 48px 24px;
   min-height: calc(100vh - 70px);
-  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--gray-100) 100%);
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  transition: background var(--transition-normal);
 }
 
 .profile-card {
@@ -80,9 +81,10 @@
 .profile-details {
   text-align: left;
   margin-bottom: 32px;
-  background: var(--gray-50);
+  background: var(--bg-primary);
   border-radius: var(--radius-lg);
   padding: 8px;
+  transition: background-color var(--transition-normal);
 }
 
 .detail-row {
@@ -101,7 +103,7 @@
 }
 
 .detail-row:hover {
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--gray-50) 100%);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
 }
 
 .detail-row .label {
