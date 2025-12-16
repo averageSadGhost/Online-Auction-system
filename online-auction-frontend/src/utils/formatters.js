@@ -46,12 +46,12 @@ export const formatTimer = (seconds) => {
 export const getStatusColor = (status) => {
   switch (status) {
     case 'scheduled':
-      return '#2196F3'; // blue
+      return '#3b82f6'; // blue - matches --secondary
     case 'started':
-      return '#4CAF50'; // green
+      return '#10b981'; // green - matches --primary
     case 'ended':
-      return '#F44336'; // red
+      return '#ef4444'; // red - matches --error
     default:
-      return '#666666';
+      return '#6b7280'; // gray - matches --gray-500
   }
 };

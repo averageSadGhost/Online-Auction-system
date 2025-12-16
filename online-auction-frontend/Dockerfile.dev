@@ -1,0 +1,19 @@
+# Development Dockerfile for React frontend
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install --silent
+
+# Copy source code
+COPY . .
+
+# Expose development port
+EXPOSE 3000
+
+# Start development server with hot reload
+CMD ["npm", "start"]

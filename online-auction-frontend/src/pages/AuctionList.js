@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auctionAPI } from '../services/api';
-import { formatCurrency, getTimeRemaining } from '../utils/formatters';
+import { formatCurrency, getTimeRemaining, getStatusColor } from '../utils/formatters';
 import Loading from '../components/Loading';
 import './Auction.css';
 
@@ -41,46 +41,87 @@ const AuctionList = () => {
 
   return (
     <div className="auction-page">
-      <h1>Available Auctions</h1>
-      <p className="page-subtitle">Browse and join auctions</p>
+      <div className="page-header">
+        <div className="page-header-content">
+          <h1>Browse Auctions</h1>
+          <p className="page-subtitle">Discover and bid on exclusive items</p>
+        </div>
+        <div className="page-header-stats">
+          <div className="header-stat">
+            <span className="header-stat-number">{auctions.length}</span>
+            <span className="header-stat-label">Available Auctions</span>
+          </div>
+        </div>
+      </div>
 
       {error && <div className="error-banner">{error}</div>}
 
       {auctions.length === 0 ? (
         <div className="empty-state">
-          <p>No auctions available at the moment.</p>
+          <div className="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <path d="M21 15l-5-5L5 21"/>
+            </svg>
+          </div>
+          <h3>No auctions available</h3>
           <p>Check back later for new auctions!</p>
         </div>
       ) : (
         <div className="auction-grid">
           {auctions.map((auction) => (
-            <div key={auction.id} className="auction-card">
+            <div
+              key={auction.id}
+              className="auction-card"
+              onClick={() => handleViewDetails(auction.id)}
+            >
               <div className="auction-image">
                 {auction.image ? (
                   <img src={auction.image} alt={auction.title} />
                 ) : (
-                  <div className="no-image">No Image</div>
+                  <div className="no-image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <path d="M21 15l-5-5L5 21"/>
+                    </svg>
+                  </div>
                 )}
+                <div
+                  className="auction-card-status"
+                  style={{ backgroundColor: getStatusColor(auction.status) }}
+                >
+                  {auction.status === 'started' && (
+                    <span className="status-live-dot"></span>
+                  )}
+                  {auction.status}
+                </div>
               </div>
               <div className="auction-info">
                 <h3>{auction.title}</h3>
-                {auction.current_bid ? (
-                  <p className="current-bid-info">
-                    Current Bid: {formatCurrency(auction.current_bid)}
-                  </p>
-                ) : (
-                  <p className="starting-price">
-                    Starting at: {formatCurrency(auction.starting_price)}
-                  </p>
-                )}
-                <p className="time-remaining">
-                  {getTimeRemaining(auction.start_date_time)}
-                </p>
-                <button
-                  className="btn-view"
-                  onClick={() => handleViewDetails(auction.id)}
-                >
+                <div className="auction-price-row">
+                  <span className="price-label">
+                    {auction.current_bid ? 'Current Bid' : 'Starting at'}
+                  </span>
+                  <span className={`price-value ${auction.current_bid ? 'has-bid' : ''}`}>
+                    {formatCurrency(auction.current_bid || auction.starting_price)}
+                  </span>
+                </div>
+                <div className="auction-meta">
+                  <div className="auction-time">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M12 6v6l4 2"/>
+                    </svg>
+                    <span>{getTimeRemaining(auction.start_date_time)}</span>
+                  </div>
+                </div>
+                <button className="btn-view">
                   View Details
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
                 </button>
               </div>
             </div>

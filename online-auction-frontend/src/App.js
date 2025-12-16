@@ -1,8 +1,9 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import VerifyOtp from './pages/VerifyOtp';
@@ -22,6 +23,9 @@ const AppRoutes = () => {
 
   return (
     <Routes>
+      {/* Landing Page */}
+      <Route path="/" element={<Landing />} />
+
       {/* Public Routes */}
       <Route
         path="/login"
@@ -75,16 +79,27 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Default Route */}
-      <Route
-        path="/"
-        element={<Navigate to={authenticated ? "/auctions" : "/login"} replace />}
-      />
+      {/* Catch all */}
       <Route
         path="*"
-        element={<Navigate to={authenticated ? "/auctions" : "/login"} replace />}
+        element={<Navigate to="/" replace />}
       />
     </Routes>
+  );
+};
+
+const AppContent = () => {
+  const location = useLocation();
+  const isLandingPage = location.pathname === '/';
+  const isAuthPage = ['/login', '/register', '/verify-otp'].includes(location.pathname);
+
+  return (
+    <div className="app">
+      {!isLandingPage && !isAuthPage && <Navbar />}
+      <main className={`main-content ${isLandingPage ? 'landing-page' : ''}`}>
+        <AppRoutes />
+      </main>
+    </div>
   );
 };
 
@@ -92,12 +107,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="app">
-          <Navbar />
-          <main className="main-content">
-            <AppRoutes />
-          </main>
-        </div>
+        <AppContent />
       </Router>
     </AuthProvider>
   );
