@@ -32,3 +32,12 @@ class UserInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'email', 'first_name', 'last_name', 'user_type')
+
+
+class OTPSerializer(serializers.Serializer):
+    email = serializers.EmailField(help_text="User's email address")
+    otp = serializers.CharField(max_length=6, help_text="6-digit OTP code")
+
+
+class EmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(help_text="User's email address")

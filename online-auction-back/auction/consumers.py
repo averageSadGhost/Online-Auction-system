@@ -38,6 +38,7 @@ class AuctionConsumer(AsyncWebsocketConsumer):
         # Check if user is part of the auction
         if not await self.is_user_part_of_auction():
             await self.close()  # Close connection if the user is not part of the auction
+            return
 
         # Set the group name for WebSocket
         self.auction_group_name = f'auction_{self.auction_id}'

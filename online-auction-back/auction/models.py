@@ -1,8 +1,7 @@
 from django.db import models
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-
-from project import settings
 
 User = get_user_model()  # Get the user model (to support custom user models)
 
@@ -32,13 +31,13 @@ class Vote(models.Model):
 
     def clean(self):
         """Custom validation to ensure the vote price is valid."""
-        if self.price < self.auction.starting_price:
-            raise ValidationError("Vote price cannot be less than the starting price.")
-        
+        if self.price <= self.auction.starting_price:
+            raise ValidationError("Vote price must be higher than the starting price.")
+
         # Get the last vote price if it exists
         last_vote = self.auction.votes.order_by('-id').first()
-        if last_vote and self.price < last_vote.price:
-            raise ValidationError("Vote price cannot be less than the last vote price.")
+        if last_vote and self.price <= last_vote.price:
+            raise ValidationError("Vote price must be higher than the last vote price.")
 
     def save(self, *args, **kwargs):
         """Override save method to include validation."""

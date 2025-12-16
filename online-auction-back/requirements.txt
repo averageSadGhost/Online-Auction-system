@@ -1,0 +1,51 @@
+# Django and REST Framework
+Django>=5.1.2,<6.0
+djangorestframework>=3.15.2
+django-cors-headers>=4.3.0
+
+# WebSocket support
+channels>=4.0.0
+channels-redis>=4.2.0
+daphne>=4.1.0
+
+# Task queue
+huey>=2.5.0
+redis>=5.0.0
+
+# API Documentation
+drf-yasg>=1.21.0
+
+# Image handling
+Pillow>=10.0.0
+
+# HTTP requests (for auction generator)
+requests>=2.31.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# ============================================
+# Database (Production)
+# ============================================
+psycopg2-binary>=2.9.9
+dj-database-url>=2.1.0
+
+# ============================================
+# Production server
+# ============================================
+gunicorn>=21.2.0
+uvicorn[standard]>=0.27.0
+
+# ============================================
+# Testing dependencies
+# ============================================
+pytest>=7.4.0
+pytest-django>=4.7.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+factory-boy>=3.3.0
+
+# Code quality
+flake8>=7.0.0
+black>=24.0.0
+isort>=5.13.0
