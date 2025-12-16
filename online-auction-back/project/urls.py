@@ -22,7 +22,7 @@ schema_view = get_schema_view(
         description="""
 # Online Auction API Documentation
 
-A real-time auction platform API with WebSocket support for live bidding.
+A full-featured real-time auction platform API with WebSocket support for live bidding, two-factor authentication, and comprehensive email notifications.
 
 ## Authentication
 
@@ -31,50 +31,87 @@ Most endpoints require token authentication. Include the token in the `Authoriza
 Authorization: Token your-auth-token-here
 ```
 
-### Public Endpoints (No Authentication Required)
-- `POST /api/register/` - Create a new account
-- `POST /api/verify-otp/` - Verify email with OTP code
-- `POST /api/login/` - Get auth token
-- `POST /api/resend-otp/` - Resend OTP code
-- `GET /api/auctions/featured/` - Get top 3 featured auctions by price
+---
 
-## REST API Endpoints
+## Public Endpoints (No Authentication Required)
 
-### Authentication Flow
-1. **Register** - Create a new account (`POST /api/register/`)
-2. **Verify OTP** - Verify email with OTP code (`POST /api/verify-otp/`)
-3. **Login** - Get auth token (`POST /api/login/`)
-4. **Get User Info** - Get current user details (`GET /api/me/`) *[Auth Required]*
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/register/` | Create a new account (sends OTP email) |
+| POST | `/api/verify-otp/` | Verify email with 6-digit OTP code |
+| POST | `/api/resend-otp/` | Resend OTP code (if expired) |
+| POST | `/api/login/` | Get auth token (or 2FA challenge) |
+| POST | `/api/forgot-password/` | Request password reset email |
+| POST | `/api/reset-password/` | Reset password with token |
+| POST | `/api/2fa/verify/` | Complete 2FA login verification |
+| GET | `/api/auctions/featured/` | Get top 3 featured auctions |
 
-### Auction Flow
-1. **Featured Auctions** - Get top 3 auctions by price (`GET /api/auctions/featured/`) *[Public]*
-2. **List Auctions** - Browse available auctions (`GET /api/auctions/`) *[Auth Required]*
-3. **Join Auction** - Join an auction (`POST /api/auctions/{id}/join_auction/`) *[Auth Required]*
-4. **My Auctions** - View joined auctions (`GET /api/auctions/my_auctions/`) *[Auth Required]*
-5. **Auction Details** - Get auction info (`GET /api/auctions/{id}/`) *[Auth Required]*
+---
+
+## Authentication Flow
+
+### Standard Login
+1. **Register** - `POST /api/register/` - Creates account, sends OTP
+2. **Verify OTP** - `POST /api/verify-otp/` - Verify email
+3. **Login** - `POST /api/login/` - Returns auth token
+
+### Login with Two-Factor Authentication
+1. **Login** - `POST /api/login/` - Returns `requires_2fa: true` and `temp_token`
+2. **Verify 2FA** - `POST /api/2fa/verify/` - Submit temp_token + TOTP code, get auth token
+
+### Password Reset
+1. **Request Reset** - `POST /api/forgot-password/` - Sends reset email
+2. **Reset Password** - `POST /api/reset-password/` - Submit token + new password
+
+---
+
+## Two-Factor Authentication (2FA)
+
+Enable TOTP-based 2FA with any authenticator app (Google Authenticator, Authy, etc.)
+
+### Setup Flow
+1. **Setup** - `POST /api/2fa/setup/` - Get secret and QR URI
+2. **Enable** - `POST /api/2fa/enable/` - Verify code to enable 2FA
+
+### Disable Flow
+1. **Disable** - `POST /api/2fa/disable/` - Requires password + current TOTP code
+
+### Status
+- **Check Status** - `GET /api/2fa/status/` - Returns `{"enabled": true/false}`
+
+---
+
+## Auction Flow
+
+1. **Featured Auctions** - `GET /api/auctions/featured/` *[Public]*
+2. **List Auctions** - `GET /api/auctions/` - Browse available auctions *[Auth]*
+3. **Join Auction** - `POST /api/auctions/{id}/join_auction/` *[Auth]*
+4. **My Auctions** - `GET /api/auctions/my_auctions/` *[Auth]*
+5. **Won Auctions** - `GET /api/auctions/won_auctions/` *[Auth]*
+6. **Auction Details** - `GET /api/auctions/{id}/` *[Auth]*
+
+### Query Parameters
+- `search` - Search by title or description
+- `status` - Filter by status (scheduled, started, ended)
+- `min_price` / `max_price` - Price range filter
+- `ordering` - Sort by field (prefix `-` for descending)
 
 ---
 
 ## WebSocket API
 
 ### Connection
-
-Connect to the WebSocket endpoint for real-time auction updates:
-
 ```
 ws://localhost:9000/ws/auction/{auction_id}/?token={auth_token}
 ```
 
-**Parameters:**
-- `auction_id` - The ID of the auction to join
-- `token` - Your authentication token (from login)
-
-**Note:** You must be a participant of the auction to connect.
+**Requirements:**
+- Valid authentication token
+- User must be a participant of the auction
 
 ### Messages from Server
 
-#### Auction Update
-Sent when auction data changes (new bid, status change):
+**Auction Update** (on connect and bid changes):
 ```json
 {
     "title": "Auction Title",
@@ -89,19 +126,16 @@ Sent when auction data changes (new bid, status change):
 }
 ```
 
-#### Bid Response
-After placing a bid:
+**Bid Response:**
 ```json
 {"success": "Bid of 200 placed successfully."}
-```
-or
-```json
+// or
 {"error": "Bid must be higher than the starting price of 100.00."}
 ```
 
 ### Messages to Server
 
-#### Place Bid
+**Place Bid:**
 ```json
 {
     "action": "place_bid",
@@ -110,26 +144,36 @@ or
 ```
 
 ### Auction Status Values
-- `scheduled` - Auction not yet started
+- `scheduled` - Users can join, bidding not open
 - `started` - Auction is live, bidding is open
-- `ended` - Auction has ended
+- `ended` - Auction finished, winner determined
 
 ---
 
 ## Error Responses
 
-All error responses follow this format:
 ```json
 {"detail": "Error message here"}
 ```
 
-Common HTTP status codes:
-- `400` - Bad Request (validation error)
-- `401` - Unauthorized (invalid/missing token)
-- `403` - Forbidden (account not verified)
-- `404` - Not Found
+| Status | Description |
+|--------|-------------|
+| 400 | Bad Request (validation error) |
+| 401 | Unauthorized (invalid/missing token) |
+| 403 | Forbidden (account not verified) |
+| 404 | Not Found |
+
+---
+
+## Health Check Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `/api/health/` | Basic health check |
+| `/api/health/ready/` | Readiness (DB connection) |
+| `/api/health/live/` | Liveness check |
 """,
-        contact=openapi.Contact(email="support@auction.com"),
+        contact=openapi.Contact(email="support@auctionhub.com"),
         license=openapi.License(name="BSD License"),
     ),
     public=True,
